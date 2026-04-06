@@ -15,7 +15,10 @@ public class KeyWordManager : MonoBehaviour
     [SerializeField] private List<KeyWordEntry> words = new List<KeyWordEntry>();
 
     [Header("UI")]
-    [SerializeField] private Transform wordsContainer;
+    [SerializeField] private Transform sujetoContainer;
+    [SerializeField] private Transform accionContainer;
+    [SerializeField] private Transform lugarContainer;
+    [SerializeField] private Transform fallbackContainer;
     [SerializeField] private KeyWord keyWordPrefab;
 
     [Header("Colors by Type")]
@@ -47,28 +50,74 @@ public class KeyWordManager : MonoBehaviour
 
     public void SpawnWords()
     {
-        if (wordsContainer == null || keyWordPrefab == null)
+        if (keyWordPrefab == null)
         {
-            Debug.LogWarning("KeyWordManager is missing wordsContainer or keyWordPrefab reference.");
+            Debug.LogWarning("KeyWordManager is missing keyWordPrefab reference.");
             return;
+        }
+
+        if (sujetoContainer == null || accionContainer == null || lugarContainer == null)
+        {
+            if (fallbackContainer == null)
+            {
+                Debug.LogWarning("KeyWordManager is missing one or more type containers and fallbackContainer.");
+                return;
+            }
+
+            Debug.LogWarning("KeyWordManager is missing one or more type containers. Using fallbackContainer.");
         }
 
         ClearSpawnedWords();
 
         foreach (KeyWordEntry entry in words)
         {
-            KeyWord word = Instantiate(keyWordPrefab, wordsContainer);
+            Transform targetContainer = GetContainerForType(entry.type);
+            if (targetContainer == null)
+            {
+                continue;
+            }
+
+            KeyWord word = Instantiate(keyWordPrefab, targetContainer);
             Color color = GetColorForType(entry.type);
             word.Initialize(entry.text, entry.type, color);
             spawnedWords.Add(word);
         }
     }
 
+    public void SetWords(List<KeyWordEntry> newWords)
+    {
+        words = newWords != null ? new List<KeyWordEntry>(newWords) : new List<KeyWordEntry>();
+
+        if (isActiveAndEnabled)
+        {
+            SpawnWords();
+        }
+    }
+
+    private Transform GetContainerForType(WordType type)
+    {
+        switch (type)
+        {
+            case WordType.Sujeto:
+                return sujetoContainer != null ? sujetoContainer : fallbackContainer;
+            case WordType.Accion:
+                return accionContainer != null ? accionContainer : fallbackContainer;
+            case WordType.Lugar:
+                return lugarContainer != null ? lugarContainer : fallbackContainer;
+            default:
+                return fallbackContainer;
+        }
+    }
+
     private void ClearSpawnedWords()
     {
-        for (int i = wordsContainer.childCount - 1; i >= 0; i--)
+        for (int i = spawnedWords.Count - 1; i >= 0; i--)
         {
-            Destroy(wordsContainer.GetChild(i).gameObject);
+            KeyWord spawnedWord = spawnedWords[i];
+            if (spawnedWord != null)
+            {
+                Destroy(spawnedWord.gameObject);
+            }
         }
 
         spawnedWords.Clear();

@@ -12,6 +12,10 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
     [SerializeField] private TMP_Text label;
     [SerializeField] private Image background;
 
+    [Header("Size")]
+    [SerializeField] private float horizontalTextPadding = 40f;
+    [SerializeField] private float minWidth = 120f;
+
     [Header("Drag")]
     [SerializeField] private float returnDuration = 0.2f;
     [SerializeField] private float snapDuration = 0.14f;
@@ -39,6 +43,11 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
         rootCanvas = GetComponentInParent<Canvas>();
         layoutElement = GetComponent<LayoutElement>();
 
+        if (layoutElement == null)
+        {
+            layoutElement = gameObject.AddComponent<LayoutElement>();
+        }
+
         originParent = transform.parent;
         originSiblingIndex = transform.GetSiblingIndex();
     }
@@ -50,8 +59,13 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
 
         if (label != null)
         {
+            label.enableWordWrapping = false;
+            label.overflowMode = TextOverflowModes.Overflow;
             label.text = text;
+            label.ForceMeshUpdate();
         }
+
+        UpdateWidthToContent();
 
         if (background != null)
         {
@@ -60,6 +74,17 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
 
         originParent = transform.parent;
         originSiblingIndex = transform.GetSiblingIndex();
+    }
+
+    public float GetPreferredWidth()
+    {
+        if (label == null)
+        {
+            return Mathf.Max(minWidth, rectTransform.rect.width);
+        }
+
+        float targetWidth = label.preferredWidth + horizontalTextPadding;
+        return Mathf.Max(minWidth, targetWidth);
     }
 
     public void OnPointerDown(PointerEventData eventData)
@@ -237,6 +262,17 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
     {
         rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, size.x);
         rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
+    }
+
+    private void UpdateWidthToContent()
+    {
+        float width = GetPreferredWidth();
+        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+
+        if (layoutElement != null)
+        {
+            layoutElement.preferredWidth = width;
+        }
     }
 
     private void StopMoveAnimations()
