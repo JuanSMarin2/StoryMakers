@@ -59,7 +59,7 @@ public class WordSlot : MonoBehaviour, IDropHandler
             return;
         }
 
-        if (incomingWord.Type != RequiredType)
+        if (!IsTypeCompatible(incomingWord.Type, RequiredType))
         {
             incomingWord.ReturnToOriginSmooth();
             return;
@@ -117,5 +117,23 @@ public class WordSlot : MonoBehaviour, IDropHandler
         {
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
         }
+    }
+
+    private static bool IsTypeCompatible(WordType incomingType, WordType requiredType)
+    {
+        if (incomingType == requiredType)
+        {
+            return true;
+        }
+
+        bool incomingIsAction = incomingType == WordType.Accion
+            || incomingType == WordType.AccionP1
+            || incomingType == WordType.AccionP2;
+
+        bool requiredIsAction = requiredType == WordType.Accion
+            || requiredType == WordType.AccionP1
+            || requiredType == WordType.AccionP2;
+
+        return incomingIsAction && requiredIsAction;
     }
 }

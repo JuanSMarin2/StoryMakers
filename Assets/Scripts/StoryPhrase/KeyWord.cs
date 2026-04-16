@@ -17,8 +17,9 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
     [SerializeField] private float minWidth = 120f;
 
     [Header("Drag")]
-    [SerializeField] private float returnDuration = 0.2f;
+    [SerializeField] private float returnDuration = 0.35f;
     [SerializeField] private float snapDuration = 0.14f;
+    [SerializeField] private float returnArcHeight = 80f;
 
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
@@ -192,14 +193,17 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
 
         Vector3 start = rectTransform.position;
         Vector3 target = ComputeCurrentOriginWorldPosition();
+        float duration = Mathf.Max(0.3f, returnDuration);
+        float arcHeight = Mathf.Max(returnArcHeight, Vector3.Distance(start, target) * 0.2f);
+        Vector3 control = (start + target) * 0.5f + Vector3.up * arcHeight;
         float elapsed = 0f;
 
-        while (elapsed < returnDuration)
+        while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / returnDuration);
+            float t = Mathf.Clamp01(elapsed / duration);
             float eased = 1f - Mathf.Pow(1f - t, 3f);
-            rectTransform.position = Vector3.Lerp(start, target, eased);
+            rectTransform.position = EvaluateQuadraticBezier(start, control, target, eased);
             yield return null;
         }
 
@@ -231,11 +235,19 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
         }
 
         Vector3 currentWorldPosition = rectTransform.position;
+        bool hadIgnoreLayout = layoutElement != null && layoutElement.ignoreLayout;
+        if (layoutElement != null)
+        {
+            // Enable layout participation temporarily to compute the true target position.
+            layoutElement.ignoreLayout = false;
+        }
+
         transform.SetParent(originParent, true);
 
         int clampedIndex = Mathf.Clamp(originSiblingIndex, 0, originParent.childCount - 1);
         transform.SetSiblingIndex(clampedIndex);
 
+        Canvas.ForceUpdateCanvases();
         RectTransform originRect = originParent as RectTransform;
         if (originRect != null)
         {
@@ -247,6 +259,11 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
         transform.SetParent(rootCanvas.transform, true);
         transform.SetAsLastSibling();
         rectTransform.position = currentWorldPosition;
+
+        if (layoutElement != null)
+        {
+            layoutElement.ignoreLayout = hadIgnoreLayout;
+        }
 
         return targetWorldPosition;
     }
@@ -288,5 +305,13 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
             StopCoroutine(snapCoroutine);
             snapCoroutine = null;
         }
+    }
+
+    private static Vector3 EvaluateQuadraticBezier(Vector3 start, Vector3 control, Vector3 end, float t)
+    {
+        float oneMinusT = 1f - t;
+        return oneMinusT * oneMinusT * start
+            + 2f * oneMinusT * t * control
+            + t * t * end;
     }
 }

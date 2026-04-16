@@ -2,5 +2,8 @@ public enum WordType
 {
     Sujeto,
     Lugar,
-    Accion
+    Accion,
+    AccionP1,
+    AccionP2,
+    Pronombre
 }

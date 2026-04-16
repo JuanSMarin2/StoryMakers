@@ -25,6 +25,7 @@ public class KeyWordManager : MonoBehaviour
     [SerializeField] private Color sujetoColor = new Color(0.95f, 0.72f, 0.40f, 1f);
     [SerializeField] private Color lugarColor = new Color(0.47f, 0.78f, 0.87f, 1f);
     [SerializeField] private Color accionColor = new Color(0.64f, 0.87f, 0.53f, 1f);
+    [SerializeField] private Color pronombreColor = new Color(0.63f, 0.46f, 0.95f, 1f);
 
     private readonly List<KeyWord> spawnedWords = new List<KeyWord>();
 
@@ -42,7 +43,11 @@ public class KeyWordManager : MonoBehaviour
             case WordType.Lugar:
                 return lugarColor;
             case WordType.Accion:
+            case WordType.AccionP1:
+            case WordType.AccionP2:
                 return accionColor;
+            case WordType.Pronombre:
+                return pronombreColor;
             default:
                 return Color.white;
         }
@@ -101,6 +106,9 @@ public class KeyWordManager : MonoBehaviour
             case WordType.Sujeto:
                 return sujetoContainer != null ? sujetoContainer : fallbackContainer;
             case WordType.Accion:
+            case WordType.AccionP1:
+            case WordType.AccionP2:
+            case WordType.Pronombre:
                 return accionContainer != null ? accionContainer : fallbackContainer;
             case WordType.Lugar:
                 return lugarContainer != null ? lugarContainer : fallbackContainer;
