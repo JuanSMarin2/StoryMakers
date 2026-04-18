@@ -55,8 +55,9 @@ public class PhraseManager : MonoBehaviour
 
     [Header("Dependencies")]
     [SerializeField] private KeyWordManager keyWordManager;
+    [SerializeField] private Button decideAssetsButton;
     [SerializeField] private Button continueButton;
-    [SerializeField] private TMP_Text finalPhraseOutputText;
+  
     [SerializeField] private GameObject guionPanel;
 
     private readonly List<WordSlot> slots = new List<WordSlot>();
@@ -66,12 +67,24 @@ public class PhraseManager : MonoBehaviour
     private CharacterSelection character1;
     private CharacterSelection character2;
     private bool persistentSelectionsReady;
+    private string selectedLugarScene1 = string.Empty;
+    private string selectedLugarScene2 = string.Empty;
+    private CharacterSelection decidedCharacter1;
+    private CharacterSelection decidedCharacter2;
+    private string decidedLugarScene1 = string.Empty;
+    private string decidedLugarScene2 = string.Empty;
+    private bool hasDecidedAssets;
 
     private void Awake()
     {
         EnsureDefaultScenes();
         currentSceneIndex = 0;
         ApplyScene(currentSceneIndex);
+
+        if (decideAssetsButton != null)
+        {
+            decideAssetsButton.onClick.AddListener(OnDecideAssetsPressed);
+        }
 
         if (continueButton != null)
         {
@@ -88,10 +101,20 @@ public class PhraseManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (decideAssetsButton != null)
+        {
+            decideAssetsButton.onClick.RemoveListener(OnDecideAssetsPressed);
+        }
+
         if (continueButton != null)
         {
             continueButton.onClick.RemoveListener(OnContinuePressed);
         }
+    }
+
+    public void OnDecideAssetsPressed()
+    {
+        ConfirmDecidedAssetsFromCurrentScene();
     }
 
     public void BuildPhrase()
@@ -196,6 +219,71 @@ public class PhraseManager : MonoBehaviour
         return builder.ToString();
     }
 
+    public bool TryGetCharacterDescriptor(int characterNumber, out string tipo1, out string personaje)
+    {
+        if (!hasDecidedAssets)
+        {
+            tipo1 = string.Empty;
+            personaje = string.Empty;
+            return false;
+        }
+
+        CharacterSelection selection;
+
+        if (characterNumber == 1)
+        {
+            selection = decidedCharacter1;
+        }
+        else if (characterNumber == 2)
+        {
+            selection = decidedCharacter2;
+        }
+        else
+        {
+            tipo1 = string.Empty;
+            personaje = string.Empty;
+            return false;
+        }
+
+        tipo1 = selection.tipo1;
+        personaje = selection.personaje;
+        return !string.IsNullOrWhiteSpace(tipo1) && !string.IsNullOrWhiteSpace(personaje);
+    }
+
+    public bool TryGetSceneryPlace(int sceneNumber, out string place)
+    {
+        place = string.Empty;
+
+        if (!hasDecidedAssets)
+        {
+            return false;
+        }
+
+        if (sceneNumber == 1)
+        {
+            if (!string.IsNullOrWhiteSpace(decidedLugarScene1))
+            {
+                place = decidedLugarScene1;
+                return true;
+            }
+
+            return false;
+        }
+
+        if (sceneNumber == 2)
+        {
+            if (!string.IsNullOrWhiteSpace(decidedLugarScene2))
+            {
+                place = decidedLugarScene2;
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+
     private void ClearPhraseContainer()
     {
         if (phraseContainer == null)
@@ -219,14 +307,15 @@ public class PhraseManager : MonoBehaviour
         }
 
         string finalResult = BuildFinalPhrase();
-        if (finalPhraseOutputText != null)
-        {
-            finalPhraseOutputText.text = finalResult;
-        }
 
         if (currentSceneIndex == 0)
         {
             CapturePersistentSelectionsFromSceneOne();
+        }
+
+        if (currentSceneIndex == 3)
+        {
+            selectedLugarScene2 = NormalizeWordValue(GetSlotValue(0, string.Empty));
         }
 
         if (currentSceneIndex >= scenes.Count - 1)
@@ -481,10 +570,152 @@ public class PhraseManager : MonoBehaviour
         string c1Personaje = GetSlotValue(1, "estudiante");
         string c2Tipo1 = GetSlotValue(2, "un");
         string c2Personaje = GetSlotValue(3, "estudiante");
+        selectedLugarScene1 = NormalizeWordValue(GetSlotValue(4, string.Empty));
 
         character1 = BuildCharacterSelection(c1Tipo1, c1Personaje);
         character2 = BuildCharacterSelection(c2Tipo1, c2Personaje);
         persistentSelectionsReady = true;
+    }
+
+    private bool TryGetLiveSceneOneCharacterSelection(int characterNumber, out CharacterSelection selection)
+    {
+        selection = default;
+
+        if (currentSceneIndex != 0 || slots.Count < 4)
+        {
+            return false;
+        }
+
+        if (characterNumber == 1)
+        {
+            string tipo1;
+            string personaje;
+            if (!TryGetSlotSelectedValue(0, out tipo1) || !TryGetSlotSelectedValue(1, out personaje))
+            {
+                return false;
+            }
+
+            selection = BuildCharacterSelection(tipo1, personaje);
+            return true;
+        }
+
+        if (characterNumber == 2)
+        {
+            string tipo1;
+            string personaje;
+            if (!TryGetSlotSelectedValue(2, out tipo1) || !TryGetSlotSelectedValue(3, out personaje))
+            {
+                return false;
+            }
+
+            selection = BuildCharacterSelection(tipo1, personaje);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryGetSlotSelectedValue(int index, out string value)
+    {
+        value = string.Empty;
+
+        if (index < 0 || index >= slots.Count)
+        {
+            return false;
+        }
+
+        KeyWord word = slots[index].CurrentWord;
+        if (word == null || string.IsNullOrWhiteSpace(word.WordText))
+        {
+            return false;
+        }
+
+        value = word.WordText.Trim();
+        return true;
+    }
+
+    private void ConfirmDecidedAssetsFromCurrentScene()
+    {
+        CharacterSelection sourceCharacter1;
+        CharacterSelection sourceCharacter2;
+        string sourceLugar1 = string.Empty;
+        string sourceLugar2 = string.Empty;
+
+        if (persistentSelectionsReady)
+        {
+            sourceCharacter1 = character1;
+            sourceCharacter2 = character2;
+            sourceLugar1 = NormalizeWordValue(selectedLugarScene1);
+            sourceLugar2 = NormalizeWordValue(selectedLugarScene2);
+        }
+        else
+        {
+            if (!TryGetLiveSceneOneCharacterSelection(1, out sourceCharacter1) || !TryGetLiveSceneOneCharacterSelection(2, out sourceCharacter2))
+            {
+                Debug.LogWarning("Decide Assets requiere selecciones validas de personajes.");
+                return;
+            }
+
+            GetFirstTwoSelectedLugares(out sourceLugar1, out sourceLugar2);
+        }
+
+        if (string.IsNullOrWhiteSpace(sourceLugar1))
+        {
+            sourceLugar1 = NormalizeWordValue(selectedLugarScene1);
+        }
+
+        if (string.IsNullOrWhiteSpace(sourceLugar2))
+        {
+            sourceLugar2 = NormalizeWordValue(selectedLugarScene2);
+        }
+
+        if (string.IsNullOrWhiteSpace(sourceLugar1))
+        {
+            Debug.LogWarning("Decide Assets requiere al menos un lugar seleccionado.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(sourceLugar2))
+        {
+            sourceLugar2 = sourceLugar1;
+        }
+
+        decidedCharacter1 = sourceCharacter1;
+        decidedCharacter2 = sourceCharacter2;
+        decidedLugarScene1 = sourceLugar1;
+        decidedLugarScene2 = sourceLugar2;
+        hasDecidedAssets = true;
+    }
+
+    private void GetFirstTwoSelectedLugares(out string firstLugar, out string secondLugar)
+    {
+        firstLugar = string.Empty;
+        secondLugar = string.Empty;
+
+        int max = Mathf.Min(slotTypes.Count, slots.Count);
+        for (int i = 0; i < max; i++)
+        {
+            if (slotTypes[i] != WordType.Lugar)
+            {
+                continue;
+            }
+
+            string selectedValue;
+            if (!TryGetSlotSelectedValue(i, out selectedValue))
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(firstLugar))
+            {
+                firstLugar = selectedValue;
+            }
+            else
+            {
+                secondLugar = selectedValue;
+                return;
+            }
+        }
     }
 
     private string ResolvePersistentTokens(string template)
@@ -533,6 +764,16 @@ public class PhraseManager : MonoBehaviour
         }
 
         return word.WordText;
+    }
+
+    private static string NormalizeWordValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Trim();
     }
 
     private static Dictionary<WordType, int> CountTypeUsage(List<WordType> types)

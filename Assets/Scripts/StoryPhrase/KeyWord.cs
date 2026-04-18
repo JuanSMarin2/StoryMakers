@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 [RequireComponent(typeof(RectTransform))]
 [RequireComponent(typeof(CanvasGroup))]
-public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDragHandler
+public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [Header("UI")]
     [SerializeField] private TMP_Text label;
@@ -32,6 +32,7 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
     private Coroutine returnCoroutine;
     private Coroutine snapCoroutine;
     private bool droppedIntoValidSlot;
+    private bool isDragging;
 
     public string WordText { get; private set; }
     public WordType Type { get; private set; }
@@ -91,8 +92,13 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
     public void OnPointerDown(PointerEventData eventData)
     {
         StopMoveAnimations();
-
+        isDragging = false;
         droppedIntoValidSlot = false;
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        isDragging = true;
         canvasGroup.blocksRaycasts = false;
 
         if (layoutElement != null)
@@ -121,6 +127,12 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IDragHandler, IEndDra
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        if (!isDragging)
+        {
+            return;
+        }
+
+        isDragging = false;
         canvasGroup.blocksRaycasts = true;
 
         if (!droppedIntoValidSlot)
