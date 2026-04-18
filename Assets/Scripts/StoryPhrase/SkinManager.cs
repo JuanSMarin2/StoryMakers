@@ -61,6 +61,8 @@ public class SkinManager : MonoBehaviour
     [Header("Flow")]
     [SerializeField] private Button continueButton;
     [SerializeField] private PhraseManager phraseManager;
+    [SerializeField] private global::CharacterSetup characterSetup;
+    [SerializeField] private SceneryManager sceneryManager;
 
     [Header("Scenery Phase Objects")]
     [SerializeField] private List<GameObject> sceneryPhaseObjects = new List<GameObject>();
@@ -75,6 +77,11 @@ public class SkinManager : MonoBehaviour
 
     private void Awake()
     {
+        if (sceneryManager == null)
+        {
+            sceneryManager = FindObjectOfType<SceneryManager>();
+        }
+
         if (character1.peloTarget == null)
         {
             character1.peloTarget = pelo.targetObject;
@@ -247,12 +254,14 @@ public class SkinManager : MonoBehaviour
                 EnterStage(FlowStage.Character1Dress);
                 break;
             case FlowStage.Character1Dress:
+                CreateCharacterCopies(1, character1);
                 EnterStage(FlowStage.Character2Gender);
                 break;
             case FlowStage.Character2Gender:
                 EnterStage(FlowStage.Character2Dress);
                 break;
             case FlowStage.Character2Dress:
+                CreateCharacterCopies(2, character2);
                 EnterStage(FlowStage.Completed);
                 break;
             case FlowStage.Completed:
@@ -326,6 +335,21 @@ public class SkinManager : MonoBehaviour
         {
             SetSkinPhaseObjectsActive(false);
             SetSceneryPhaseObjectsActive(true);
+
+            if (sceneryManager == null)
+            {
+                sceneryManager = FindObjectOfType<SceneryManager>();
+            }
+
+            if (sceneryManager != null)
+            {
+                sceneryManager.StartSceneryStage();
+            }
+            else
+            {
+                Debug.LogWarning("SkinManager: no se encontro SceneryManager para iniciar la etapa de escenarios.");
+            }
+
             SetCharacterRootActive(character1, false);
             SetCharacterRootActive(character2, false);
             SetGenderButtonsActive(false);
@@ -608,5 +632,15 @@ public class SkinManager : MonoBehaviour
         }
 
         Debug.LogWarning($"SkinManager: Target object for {category.name} has no Renderer or RawImage.");
+    }
+
+    private void CreateCharacterCopies(int characterNumber, CharacterSetup sourceCharacter)
+    {
+        if (characterSetup == null || sourceCharacter == null || sourceCharacter.rootObject == null)
+        {
+            return;
+        }
+
+        characterSetup.GenerateCopies(characterNumber, sourceCharacter.rootObject);
     }
 }

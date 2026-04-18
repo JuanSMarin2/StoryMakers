@@ -22,11 +22,13 @@ public class SceneryManager : MonoBehaviour
 
     [Header("Scenery")]
     [SerializeField] private List<SceneryOption> sceneryOptions = new List<SceneryOption>();
+    [SerializeField] private bool debugSceneryIndex = true;
 
     [Header("Controls")]
     [SerializeField] private Button previousButton;
     [SerializeField] private Button nextButton;
     [SerializeField] private Button continueButton;
+    [SerializeField] private GameObject SB_Panel;
 
     [Header("Dependencies")]
     [SerializeField] private PhraseManager phraseManager;
@@ -45,9 +47,13 @@ public class SceneryManager : MonoBehaviour
     private FlowStage currentStage = FlowStage.Scene1Selection;
     private int currentOptionIndex;
     private readonly int[] selectedSceneryIndex = new int[2] { -1, -1 };
+    private bool sceneryStageStarted;
 
     private void Awake()
     {
+        // Never allow scenery variants to stay active from scene defaults.
+        SetAllSceneryObjectsActive(false);
+
         if (previousButton != null)
         {
             previousButton.onClick.AddListener(PreviousScenery);
@@ -66,6 +72,26 @@ public class SceneryManager : MonoBehaviour
 
     private void Start()
     {
+        sceneryStageStarted = false;
+        SetButtonsActive(false);
+        SetAllSceneryObjectsActive(false);
+        SetStatusText("Esperando etapa de escenarios");
+        SetSceneryText("Sin escenarios activos");
+
+        if (SB_Panel != null)
+        {
+            SB_Panel.SetActive(false);
+        }
+    }
+
+    public void StartSceneryStage()
+    {
+        sceneryStageStarted = true;
+        selectedSceneryIndex[0] = -1;
+        selectedSceneryIndex[1] = -1;
+        currentOptionIndex = 0;
+
+        // Stage starts with only index 0 active.
         EnterStage(FlowStage.Scene1Selection);
     }
 
@@ -89,12 +115,17 @@ public class SceneryManager : MonoBehaviour
 
     private void Update()
     {
+        if (!sceneryStageStarted)
+        {
+            return;
+        }
+
         RefreshSceneryText();
     }
 
     public void NextScenery()
     {
-        if (!IsSelectionStage() || !HasOptions())
+        if (!sceneryStageStarted || !IsSelectionStage() || !HasOptions())
         {
             return;
         }
@@ -105,7 +136,7 @@ public class SceneryManager : MonoBehaviour
 
     public void PreviousScenery()
     {
-        if (!IsSelectionStage() || !HasOptions())
+        if (!sceneryStageStarted || !IsSelectionStage() || !HasOptions())
         {
             return;
         }
@@ -140,7 +171,7 @@ public class SceneryManager : MonoBehaviour
 
     private void OnContinuePressed()
     {
-        if (!IsSelectionStage())
+        if (!sceneryStageStarted || !IsSelectionStage())
         {
             return;
         }
@@ -154,6 +185,7 @@ public class SceneryManager : MonoBehaviour
         if (currentStage == FlowStage.Scene1Selection)
         {
             selectedSceneryIndex[0] = currentOptionIndex;
+            LogSavedIndex(1, selectedSceneryIndex[0]);
             EnterStage(FlowStage.Scene2Selection);
             return;
         }
@@ -161,12 +193,18 @@ public class SceneryManager : MonoBehaviour
         if (currentStage == FlowStage.Scene2Selection)
         {
             selectedSceneryIndex[1] = currentOptionIndex;
+            LogSavedIndex(2, selectedSceneryIndex[1]);
             EnterStage(FlowStage.Completed);
         }
     }
 
     private void EnterStage(FlowStage stage)
     {
+        if (!sceneryStageStarted)
+        {
+            return;
+        }
+
         currentStage = stage;
 
         if (currentStage == FlowStage.Completed)
@@ -175,10 +213,19 @@ public class SceneryManager : MonoBehaviour
             SetStatusText("Seleccion de escenarios completa");
             SetSceneryText(BuildCompletedText());
             SetAllSceneryObjectsActive(false);
+
+            if (SB_Panel != null)
+            {
+                SB_Panel.SetActive(true);
+            }
             return;
         }
 
-        currentOptionIndex = 0;
+        if (currentStage == FlowStage.Scene1Selection || currentStage == FlowStage.Scene2Selection)
+        {
+            currentOptionIndex = 0;
+        }
+
         SetButtonsActive(true);
         SetStatusText("Escoje el escenario para tu escena");
         ApplyCurrentOption();
@@ -353,5 +400,20 @@ public class SceneryManager : MonoBehaviour
         {
             sceneryText.text = text;
         }
+    }
+
+    private void LogSavedIndex(int sceneNumber, int savedIndex)
+    {
+        if (!debugSceneryIndex)
+        {
+            return;
+        }
+
+        string label = GetOptionLabel(savedIndex);
+        Debug.Log(string.Format(
+            "SceneryManager: guardado escenario {0} -> index {1} ({2})",
+            sceneNumber,
+            savedIndex,
+            label));
     }
 }

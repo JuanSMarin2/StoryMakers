@@ -41,6 +41,7 @@ public class PhraseManager : MonoBehaviour
     [SerializeField] private Transform phraseContainer;
     [SerializeField] private TMP_Text textBlockPrefab;
     [SerializeField] private WordSlot slotPrefab;
+    [SerializeField] private TMP_Text sceneNumberText;
 
     [Header("Wrapped Layout")]
     [SerializeField] private bool wrapInsideScreen = true;
@@ -74,10 +75,12 @@ public class PhraseManager : MonoBehaviour
     private string decidedLugarScene1 = string.Empty;
     private string decidedLugarScene2 = string.Empty;
     private bool hasDecidedAssets;
+    private readonly List<string> sceneFinalPhrases = new List<string>();
 
     private void Awake()
     {
         EnsureDefaultScenes();
+        EnsureScenePhraseStorage();
         currentSceneIndex = 0;
         ApplyScene(currentSceneIndex);
 
@@ -284,6 +287,26 @@ public class PhraseManager : MonoBehaviour
         return false;
     }
 
+    public bool TryGetSceneFinalPhrase(int sceneNumber, out string phrase)
+    {
+        phrase = string.Empty;
+
+        int sceneIndex = sceneNumber - 1;
+        if (sceneIndex < 0 || sceneIndex >= sceneFinalPhrases.Count)
+        {
+            return false;
+        }
+
+        string storedPhrase = sceneFinalPhrases[sceneIndex];
+        if (string.IsNullOrWhiteSpace(storedPhrase))
+        {
+            return false;
+        }
+
+        phrase = storedPhrase;
+        return true;
+    }
+
     private void ClearPhraseContainer()
     {
         if (phraseContainer == null)
@@ -307,6 +330,7 @@ public class PhraseManager : MonoBehaviour
         }
 
         string finalResult = BuildFinalPhrase();
+        StoreFinalPhraseForScene(currentSceneIndex, finalResult);
 
         if (currentSceneIndex == 0)
         {
@@ -520,6 +544,40 @@ public class PhraseManager : MonoBehaviour
         };
     }
 
+    private void EnsureScenePhraseStorage()
+    {
+        int requiredCount = scenes != null ? scenes.Count : 0;
+        if (requiredCount <= 0)
+        {
+            sceneFinalPhrases.Clear();
+            return;
+        }
+
+        while (sceneFinalPhrases.Count < requiredCount)
+        {
+            sceneFinalPhrases.Add(string.Empty);
+        }
+
+        if (sceneFinalPhrases.Count > requiredCount)
+        {
+            sceneFinalPhrases.RemoveRange(requiredCount, sceneFinalPhrases.Count - requiredCount);
+        }
+    }
+
+    private void StoreFinalPhraseForScene(int sceneIndex, string phrase)
+    {
+        EnsureScenePhraseStorage();
+
+        if (sceneIndex < 0 || sceneIndex >= sceneFinalPhrases.Count)
+        {
+            return;
+        }
+
+        sceneFinalPhrases[sceneIndex] = string.IsNullOrWhiteSpace(phrase)
+            ? string.Empty
+            : phrase.Trim();
+    }
+
     private void ApplyScene(int sceneIndex)
     {
         if (scenes == null || scenes.Count == 0)
@@ -540,8 +598,19 @@ public class PhraseManager : MonoBehaviour
 
         BuildPhrase();
         NotifySlotStateChanged();
+        SetSceneNumberText(clampedIndex + 1);
 
         Debug.Log($"Escena cargada: {scene.name}");
+    }
+
+    private void SetSceneNumberText(int sceneNumber)
+    {
+        if (sceneNumberText == null)
+        {
+            return;
+        }
+
+        sceneNumberText.text = string.Format("Escena {0}", sceneNumber);
     }
 
     private List<KeyWordManager.KeyWordEntry> CreateEntriesForScene(SceneDefinition scene)
