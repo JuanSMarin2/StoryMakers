@@ -61,6 +61,10 @@ public class SkinManager : MonoBehaviour
     [Header("Flow")]
     [SerializeField] private Button continueButton;
     [SerializeField] private PhraseManager phraseManager;
+
+    [Header("Validation Audio")]
+    [SerializeField] private AudioSource validationAudioSource;
+    [SerializeField] private AudioClip wrongGenderClip;
     [SerializeField] private global::CharacterSetup characterSetup;
     [SerializeField] private SceneryManager sceneryManager;
 
@@ -248,6 +252,17 @@ public class SkinManager : MonoBehaviour
 
     private void OnContinuePressed()
     {
+        if (IsGenderStage())
+        {
+            string validationMessage;
+            if (!CanContinueGenderStage(out validationMessage))
+            {
+                SetSkinStatus(validationMessage);
+                PlayWrongGenderSound();
+                return;
+            }
+        }
+
         switch (currentStage)
         {
             case FlowStage.Character1Gender:
@@ -267,6 +282,62 @@ public class SkinManager : MonoBehaviour
             case FlowStage.Completed:
                 break;
         }
+    }
+
+    private bool CanContinueGenderStage(out string message)
+    {
+        message = string.Empty;
+
+        if (phraseManager == null)
+        {
+            return true;
+        }
+
+        int characterNumber = selectedCharacterIndex + 1;
+        string tipo1;
+        string personaje;
+        if (!phraseManager.TryGetCharacterDescriptor(characterNumber, out tipo1, out personaje))
+        {
+            return true;
+        }
+
+        bool selectedIsFemale = selectedGender[selectedCharacterIndex] == 1;
+        bool expectedIsFemale = IsFeminineTipo(tipo1);
+
+        if (selectedIsFemale == expectedIsFemale)
+        {
+            return true;
+        }
+
+        string expectedGenderText = expectedIsFemale ? "mujer" : "hombre";
+        message = string.Format("Genero incorrecto para Personaje {0}. Debe ser {1}.", characterNumber, expectedGenderText);
+        return false;
+    }
+
+    private static bool IsFeminineTipo(string tipo)
+    {
+        if (string.IsNullOrWhiteSpace(tipo))
+        {
+            return false;
+        }
+
+        return tipo.Trim().ToLowerInvariant() == "una";
+    }
+
+    private void PlayWrongGenderSound()
+    {
+        if (wrongGenderClip == null)
+        {
+            return;
+        }
+
+        if (validationAudioSource != null)
+        {
+            validationAudioSource.PlayOneShot(wrongGenderClip);
+            return;
+        }
+
+        AudioSource.PlayClipAtPoint(wrongGenderClip, transform.position);
     }
 
     private static void BindButtons(SkinCategory category, UnityEngine.Events.UnityAction previousAction, UnityEngine.Events.UnityAction nextAction)

@@ -11,6 +11,7 @@ public class SceneryManager : MonoBehaviour
     {
         public string label;
         public GameObject targetObject;
+        public List<PlaceOption> representedPlaces = new List<PlaceOption>();
     }
 
     private enum FlowStage
@@ -32,6 +33,9 @@ public class SceneryManager : MonoBehaviour
 
     [Header("Dependencies")]
     [SerializeField] private PhraseManager phraseManager;
+    [Header("Validation Audio")]
+    [SerializeField] private AudioSource validationAudioSource;
+    [SerializeField] private AudioClip wrongSceneryClip;
 
     [Header("Texts")]
     [SerializeField] private TMP_Text sceneryStatusText;
@@ -181,6 +185,14 @@ public class SceneryManager : MonoBehaviour
             EnterStage(FlowStage.Completed);
             return;
         }
+        string validationMessage;
+        if (!CanContinueCurrentScene(out validationMessage))
+        {
+            SetStatusText(validationMessage);
+            PlayWrongScenerySound();
+            return;
+        }
+        SetStatusText("Escoje el escenario para tu escena");
 
         if (currentStage == FlowStage.Scene1Selection)
         {
@@ -276,6 +288,86 @@ public class SceneryManager : MonoBehaviour
         }
 
         return "Lugar no definido";
+    }
+    private bool CanContinueCurrentScene(out string message)
+    {
+        message = string.Empty;
+
+        if (!HasOptions() || currentOptionIndex < 0 || currentOptionIndex >= sceneryOptions.Count)
+        {
+            return true;
+        }
+
+        if (phraseManager == null)
+        {
+            return true;
+        }
+
+        int sceneNumber = GetCurrentSceneNumber();
+        PlaceOption expectedPlace;
+        if (!phraseManager.TryGetSceneryPlaceOption(sceneNumber, out expectedPlace))
+        {
+            message = "Debes confirmar Decide Assets en PhraseManager antes de continuar.";
+            return false;
+        }
+
+        SceneryOption selectedOption = sceneryOptions[currentOptionIndex];
+        if (selectedOption == null || selectedOption.representedPlaces == null || selectedOption.representedPlaces.Count == 0)
+        {
+            message = "Configura los lugares permitidos para este escenario en el inspector.";
+            return false;
+        }
+
+        if (selectedOption.representedPlaces.Contains(expectedPlace))
+        {
+            return true;
+        }
+
+        message = string.Format("Escenario incorrecto. Debe representar: {0}.", FormatPlaceOption(expectedPlace));
+        return false;
+    }
+
+    private static string FormatPlaceOption(PlaceOption placeOption)
+    {
+        switch (placeOption)
+        {
+            case PlaceOption.Parque:
+                return "el parque";
+            case PlaceOption.Colegio:
+                return "el colegio";
+            case PlaceOption.Teatro:
+                return "el teatro";
+            case PlaceOption.Calle:
+                return "la calle";
+            case PlaceOption.Casa:
+                return "la casa";
+            case PlaceOption.Hospital:
+                return "el hospital";
+            case PlaceOption.Estacion:
+                return "la estacion";
+            case PlaceOption.Banco:
+                return "el banco";
+            case PlaceOption.Oficina:
+                return "la oficina";
+            default:
+                return "lugar configurado";
+        }
+    }
+
+    private void PlayWrongScenerySound()
+    {
+        if (wrongSceneryClip == null)
+        {
+            return;
+        }
+
+        if (validationAudioSource != null)
+        {
+            validationAudioSource.PlayOneShot(wrongSceneryClip);
+            return;
+        }
+
+        AudioSource.PlayClipAtPoint(wrongSceneryClip, transform.position);
     }
 
     private void RefreshSceneryText()
