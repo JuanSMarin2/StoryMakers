@@ -97,3 +97,12 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+Build/
+Builds/
+*.apk
+*.aab
+*.exe
+*.app
+*.ress
+StoryMakers/StoryMakers_Data/sharedassets0.assets

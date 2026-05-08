@@ -7,15 +7,23 @@ using UnityEngine.UI;
 public class SkinManager : MonoBehaviour
 {
     [Serializable]
+    private class SkinVariant
+    {
+        public GameObject character1Model;
+        public GameObject character2Model;
+        public List<Texture> textures = new List<Texture>();
+    }
+
+    [Serializable]
     private class SkinCategory
     {
         public string name;
-        public GameObject targetObject;
-        public List<Texture> textures = new List<Texture>();
+        public List<SkinVariant> variants = new List<SkinVariant>();
         public Button previousButton;
         public Button nextButton;
 
-        [HideInInspector] public int currentIndex;
+        [HideInInspector] public int currentVariantIndex;
+        [HideInInspector] public int currentTextureIndex;
     }
 
     [Serializable]
@@ -23,12 +31,6 @@ public class SkinManager : MonoBehaviour
     {
         public string label = "Personaje";
         public GameObject rootObject;
-
-        [Header("Gender")]
-        public GameObject maleImage;
-        public GameObject femaleImage;
-        public GameObject maleModel;
-        public GameObject femaleModel;
 
         [Header("Clothing Targets")]
         public GameObject peloTarget;
@@ -38,9 +40,7 @@ public class SkinManager : MonoBehaviour
 
     private enum FlowStage
     {
-        Character1Gender,
         Character1Dress,
-        Character2Gender,
         Character2Dress,
         Completed
     }
@@ -54,17 +54,10 @@ public class SkinManager : MonoBehaviour
     [SerializeField] private CharacterSetup character1 = new CharacterSetup { label = "Personaje 1" };
     [SerializeField] private CharacterSetup character2 = new CharacterSetup { label = "Personaje 2" };
 
-    [Header("Gender Buttons")]
-    [SerializeField] private Button previousGenderButton;
-    [SerializeField] private Button nextGenderButton;
-
     [Header("Flow")]
     [SerializeField] private Button continueButton;
     [SerializeField] private PhraseManager phraseManager;
 
-    [Header("Validation Audio")]
-    [SerializeField] private AudioSource validationAudioSource;
-    [SerializeField] private AudioClip wrongGenderClip;
     [SerializeField] private global::CharacterSetup characterSetup;
     [SerializeField] private SceneryManager sceneryManager;
 
@@ -75,9 +68,8 @@ public class SkinManager : MonoBehaviour
     [SerializeField] private TMP_Text skinStatusText;
     [SerializeField] private TMP_Text characterText;
 
-    private FlowStage currentStage = FlowStage.Character1Gender;
+    private FlowStage currentStage = FlowStage.Character1Dress;
     private int selectedCharacterIndex;
-    private readonly int[] selectedGender = new int[2];
 
     private void Awake()
     {
@@ -86,38 +78,35 @@ public class SkinManager : MonoBehaviour
             sceneryManager = FindObjectOfType<SceneryManager>();
         }
 
-        if (character1.peloTarget == null)
-        {
-            character1.peloTarget = pelo.targetObject;
-        }
-
-        if (character1.camisaTarget == null)
-        {
-            character1.camisaTarget = camisa.targetObject;
-        }
-
-        if (character1.pantalonTarget == null)
-        {
-            character1.pantalonTarget = pantalon.targetObject;
-        }
-
         BindButtons(pelo, PreviousPelo, NextPelo);
         BindButtons(camisa, PreviousCamisa, NextCamisa);
         BindButtons(pantalon, PreviousPantalon, NextPantalon);
 
-        if (previousGenderButton != null)
-        {
-            previousGenderButton.onClick.AddListener(PreviousGender);
-        }
-
-        if (nextGenderButton != null)
-        {
-            nextGenderButton.onClick.AddListener(NextGender);
-        }
-
         if (continueButton != null)
         {
             continueButton.onClick.AddListener(OnContinuePressed);
+        }
+
+        // Inicializar índices de todas las categorías
+        InitializeCategoryIndices(pelo);
+        InitializeCategoryIndices(camisa);
+        InitializeCategoryIndices(pantalon);
+    }
+
+    private static void InitializeCategoryIndices(SkinCategory category)
+    {
+        if (category == null)
+        {
+            return;
+        }
+
+        category.currentVariantIndex = 0;
+        category.currentTextureIndex = 0;
+
+        // Desactivar todas las variantes excepto la primera
+        for (int i = 0; i < category.variants.Count; i++)
+        {
+            SetVariantActive(category.variants[i], i == 0);
         }
     }
 
@@ -129,11 +118,7 @@ public class SkinManager : MonoBehaviour
         ApplyCurrentTexture(pelo);
         ApplyCurrentTexture(camisa);
         ApplyCurrentTexture(pantalon);
-
-        selectedGender[0] = 0;
-        selectedGender[1] = 0;
-
-        EnterStage(FlowStage.Character1Gender);
+        EnterStage(FlowStage.Character1Dress);
     }
 
     private void OnDestroy()
@@ -141,16 +126,6 @@ public class SkinManager : MonoBehaviour
         UnbindButtons(pelo, PreviousPelo, NextPelo);
         UnbindButtons(camisa, PreviousCamisa, NextCamisa);
         UnbindButtons(pantalon, PreviousPantalon, NextPantalon);
-
-        if (previousGenderButton != null)
-        {
-            previousGenderButton.onClick.RemoveListener(PreviousGender);
-        }
-
-        if (nextGenderButton != null)
-        {
-            nextGenderButton.onClick.RemoveListener(NextGender);
-        }
 
         if (continueButton != null)
         {
@@ -228,51 +203,12 @@ public class SkinManager : MonoBehaviour
         MovePrevious(pantalon);
     }
 
-    public void NextGender()
-    {
-        if (!IsGenderStage())
-        {
-            return;
-        }
-
-        selectedGender[selectedCharacterIndex] = (selectedGender[selectedCharacterIndex] + 1) % 2;
-        RefreshCurrentCharacterVisuals();
-    }
-
-    public void PreviousGender()
-    {
-        if (!IsGenderStage())
-        {
-            return;
-        }
-
-        selectedGender[selectedCharacterIndex] = (selectedGender[selectedCharacterIndex] + 1) % 2;
-        RefreshCurrentCharacterVisuals();
-    }
-
     private void OnContinuePressed()
     {
-        if (IsGenderStage())
-        {
-            string validationMessage;
-            if (!CanContinueGenderStage(out validationMessage))
-            {
-                SetSkinStatus(validationMessage);
-                PlayWrongGenderSound();
-                return;
-            }
-        }
-
         switch (currentStage)
         {
-            case FlowStage.Character1Gender:
-                EnterStage(FlowStage.Character1Dress);
-                break;
             case FlowStage.Character1Dress:
                 CreateCharacterCopies(1, character1);
-                EnterStage(FlowStage.Character2Gender);
-                break;
-            case FlowStage.Character2Gender:
                 EnterStage(FlowStage.Character2Dress);
                 break;
             case FlowStage.Character2Dress:
@@ -282,62 +218,6 @@ public class SkinManager : MonoBehaviour
             case FlowStage.Completed:
                 break;
         }
-    }
-
-    private bool CanContinueGenderStage(out string message)
-    {
-        message = string.Empty;
-
-        if (phraseManager == null)
-        {
-            return true;
-        }
-
-        int characterNumber = selectedCharacterIndex + 1;
-        string tipo1;
-        string personaje;
-        if (!phraseManager.TryGetCharacterDescriptor(characterNumber, out tipo1, out personaje))
-        {
-            return true;
-        }
-
-        bool selectedIsFemale = selectedGender[selectedCharacterIndex] == 1;
-        bool expectedIsFemale = IsFeminineTipo(tipo1);
-
-        if (selectedIsFemale == expectedIsFemale)
-        {
-            return true;
-        }
-
-        string expectedGenderText = expectedIsFemale ? "mujer" : "hombre";
-        message = string.Format("Genero incorrecto para Personaje {0}. Debe ser {1}.", characterNumber, expectedGenderText);
-        return false;
-    }
-
-    private static bool IsFeminineTipo(string tipo)
-    {
-        if (string.IsNullOrWhiteSpace(tipo))
-        {
-            return false;
-        }
-
-        return tipo.Trim().ToLowerInvariant() == "una";
-    }
-
-    private void PlayWrongGenderSound()
-    {
-        if (wrongGenderClip == null)
-        {
-            return;
-        }
-
-        if (validationAudioSource != null)
-        {
-            validationAudioSource.PlayOneShot(wrongGenderClip);
-            return;
-        }
-
-        AudioSource.PlayClipAtPoint(wrongGenderClip, transform.position);
     }
 
     private static void BindButtons(SkinCategory category, UnityEngine.Events.UnityAction previousAction, UnityEngine.Events.UnityAction nextAction)
@@ -368,29 +248,69 @@ public class SkinManager : MonoBehaviour
 
     private static void MoveNext(SkinCategory category)
     {
-        if (!HasTextures(category))
+        if (category == null || category.variants == null || category.variants.Count == 0)
         {
             return;
         }
 
-        category.currentIndex = (category.currentIndex + 1) % category.textures.Count;
-        ApplyTextureToTarget(category);
+        if (!HasAnyVariantTextures(category))
+        {
+            return;
+        }
+
+        SkinVariant currentVariant = category.variants[category.currentVariantIndex];
+        if (currentVariant != null && currentVariant.textures != null && category.currentTextureIndex < currentVariant.textures.Count - 1)
+        {
+            category.currentTextureIndex++;
+            ApplyCurrentTexture(category);
+            return;
+        }
+
+        int nextVariantIndex = GetNextVariantIndexWithTextures(category, category.currentVariantIndex);
+        if (nextVariantIndex == category.currentVariantIndex)
+        {
+            return;
+        }
+
+        SetVariantActive(currentVariant, false);
+        category.currentVariantIndex = nextVariantIndex;
+        category.currentTextureIndex = 0;
+        SetVariantActive(category.variants[category.currentVariantIndex], true);
+        ApplyCurrentTexture(category);
     }
 
     private static void MovePrevious(SkinCategory category)
     {
-        if (!HasTextures(category))
+        if (category == null || category.variants == null || category.variants.Count == 0)
         {
             return;
         }
 
-        category.currentIndex = (category.currentIndex - 1 + category.textures.Count) % category.textures.Count;
-        ApplyTextureToTarget(category);
-    }
+        if (!HasAnyVariantTextures(category))
+        {
+            return;
+        }
 
-    private bool IsGenderStage()
-    {
-        return currentStage == FlowStage.Character1Gender || currentStage == FlowStage.Character2Gender;
+        SkinVariant currentVariant = category.variants[category.currentVariantIndex];
+        if (currentVariant != null && currentVariant.textures != null && category.currentTextureIndex > 0)
+        {
+            category.currentTextureIndex--;
+            ApplyCurrentTexture(category);
+            return;
+        }
+
+        int previousVariantIndex = GetPreviousVariantIndexWithTextures(category, category.currentVariantIndex);
+        if (previousVariantIndex == category.currentVariantIndex)
+        {
+            return;
+        }
+
+        SetVariantActive(currentVariant, false);
+        category.currentVariantIndex = previousVariantIndex;
+        SkinVariant previousVariant = category.variants[category.currentVariantIndex];
+        category.currentTextureIndex = previousVariant.textures.Count - 1;
+        SetVariantActive(previousVariant, true);
+        ApplyCurrentTexture(category);
     }
 
     private bool IsDressStage()
@@ -423,14 +343,16 @@ public class SkinManager : MonoBehaviour
 
             SetCharacterRootActive(character1, false);
             SetCharacterRootActive(character2, false);
-            SetGenderButtonsActive(false);
             SetSkinButtonsActive(false);
-            SetClothingObjectsActive(character1, false);
-            SetClothingObjectsActive(character2, false);
+            
+            // Desactivar todas las variantes de todas las categorías
+            DeactivateAllVariants(pelo);
+            DeactivateAllVariants(camisa);
+            DeactivateAllVariants(pantalon);
             return;
         }
 
-        selectedCharacterIndex = (stage == FlowStage.Character1Gender || stage == FlowStage.Character1Dress) ? 0 : 1;
+        selectedCharacterIndex = stage == FlowStage.Character1Dress ? 0 : 1;
         CharacterSetup activeCharacter = GetCurrentCharacter();
         CharacterSetup inactiveCharacter = selectedCharacterIndex == 0 ? character2 : character1;
         SetSkinPhaseObjectsActive(true);
@@ -439,24 +361,18 @@ public class SkinManager : MonoBehaviour
         SetCharacterRootActive(inactiveCharacter, false);
         SetCharacterRootActive(activeCharacter, true);
 
-        bool genderStage = IsGenderStage();
-        SetGenderButtonsActive(genderStage);
-        SetSkinButtonsActive(!genderStage);
+        SetSkinButtonsActive(true);
 
-        SetClothingObjectsActive(activeCharacter, !genderStage);
-        SetClothingObjectsActive(inactiveCharacter, false);
-
-        if (genderStage)
-        {
-            SetSkinStatus("Elige el genero de tu personaje");
-        }
-        else
-        {
-            SetSkinStatus("Viste a tu personaje");
-            ApplyCurrentTexture(pelo);
-            ApplyCurrentTexture(camisa);
-            ApplyCurrentTexture(pantalon);
-        }
+        SetSkinStatus("Viste a tu personaje");
+        
+        // Re-inicializar los índices y variantes para esta etapa
+        InitializeCategoryIndices(pelo);
+        InitializeCategoryIndices(camisa);
+        InitializeCategoryIndices(pantalon);
+        
+        ApplyCurrentTexture(pelo);
+        ApplyCurrentTexture(camisa);
+        ApplyCurrentTexture(pantalon);
 
         RefreshCurrentCharacterVisuals();
         RefreshCharacterText();
@@ -464,22 +380,8 @@ public class SkinManager : MonoBehaviour
 
     private void RefreshCurrentCharacterVisuals()
     {
-        CharacterSetup activeCharacter = GetCurrentCharacter();
-        if (activeCharacter == null)
-        {
-            return;
-        }
-
-        bool femaleSelected = selectedGender[selectedCharacterIndex] == 1;
-
-        SetActiveIfNotNull(activeCharacter.maleImage, !femaleSelected);
-        SetActiveIfNotNull(activeCharacter.femaleImage, femaleSelected);
-        SetActiveIfNotNull(activeCharacter.maleModel, !femaleSelected);
-        SetActiveIfNotNull(activeCharacter.femaleModel, femaleSelected);
-
-        pelo.targetObject = activeCharacter.peloTarget;
-        camisa.targetObject = activeCharacter.camisaTarget;
-        pantalon.targetObject = activeCharacter.pantalonTarget;
+        // Las variantes se manejan automáticamente en MoveNext/MovePrevious
+        // Solo necesitamos inicializar los índices si es necesario
     }
 
     private CharacterSetup GetCurrentCharacter()
@@ -497,14 +399,9 @@ public class SkinManager : MonoBehaviour
 
     private static void SetClothingObjectsActive(CharacterSetup setup, bool active)
     {
-        if (setup == null)
-        {
-            return;
-        }
-
-        SetActiveIfNotNull(setup.peloTarget, active);
-        SetActiveIfNotNull(setup.camisaTarget, active);
-        SetActiveIfNotNull(setup.pantalonTarget, active);
+        // Con el nuevo sistema, deactivamos todas las variantes de cada categoría
+        // cuando el personaje se desactiva (active = false)
+        // Las variantes se re-inicializan en InitializeCategoryIndices cuando el personaje entra
     }
 
     private static void SetActiveIfNotNull(GameObject target, bool active)
@@ -515,13 +412,23 @@ public class SkinManager : MonoBehaviour
         }
     }
 
+    private void DeactivateAllVariants(SkinCategory category)
+    {
+        if (category == null || category.variants == null)
+        {
+            return;
+        }
+
+        foreach (SkinVariant variant in category.variants)
+        {
+            SetVariantActive(variant, false);
+        }
+    }
+
     private void SetSkinPhaseObjectsActive(bool active)
     {
         SetCharacterRootActive(character1, active);
         SetCharacterRootActive(character2, active);
-
-        SetGameObjectActive(previousGenderButton, active);
-        SetGameObjectActive(nextGenderButton, active);
         SetSkinCategoryButtonsVisible(pelo, active);
         SetSkinCategoryButtonsVisible(camisa, active);
         SetSkinCategoryButtonsVisible(pantalon, active);
@@ -531,8 +438,10 @@ public class SkinManager : MonoBehaviour
 
         if (!active)
         {
-            SetClothingObjectsActive(character1, false);
-            SetClothingObjectsActive(character2, false);
+            // Desactivar todas las variantes cuando se desactiva la fase de skin
+            DeactivateAllVariants(pelo);
+            DeactivateAllVariants(camisa);
+            DeactivateAllVariants(pantalon);
         }
     }
 
@@ -565,21 +474,6 @@ public class SkinManager : MonoBehaviour
         if (component != null && component.gameObject != null)
         {
             component.gameObject.SetActive(active);
-        }
-    }
-
-    private void SetGenderButtonsActive(bool active)
-    {
-        if (previousGenderButton != null)
-        {
-            previousGenderButton.gameObject.SetActive(active);
-            previousGenderButton.interactable = active;
-        }
-
-        if (nextGenderButton != null)
-        {
-            nextGenderButton.gameObject.SetActive(active);
-            nextGenderButton.interactable = active;
         }
     }
 
@@ -663,46 +557,129 @@ public class SkinManager : MonoBehaviour
 
     private static void ApplyCurrentTexture(SkinCategory category)
     {
-        if (!HasTextures(category))
+        if (category == null || category.variants == null || category.variants.Count == 0)
         {
             return;
         }
 
-        category.currentIndex = Mathf.Clamp(category.currentIndex, 0, category.textures.Count - 1);
-        ApplyTextureToTarget(category);
+        SkinVariant currentVariant = category.variants[category.currentVariantIndex];
+        if (currentVariant == null || currentVariant.textures == null || currentVariant.textures.Count == 0)
+        {
+            return;
+        }
+
+        int textureIndex = Mathf.Clamp(category.currentTextureIndex, 0, currentVariant.textures.Count - 1);
+        Texture texture = currentVariant.textures[textureIndex];
+
+        ApplyTextureToGameObject(currentVariant.character1Model, texture);
+        ApplyTextureToGameObject(currentVariant.character2Model, texture);
     }
 
     private static bool HasTextures(SkinCategory category)
     {
         return category != null
-            && category.targetObject != null
-            && category.textures != null
-            && category.textures.Count > 0;
+            && category.variants != null
+            && category.variants.Count > 0;
     }
 
-    private static void ApplyTextureToTarget(SkinCategory category)
+    private static bool HasAnyVariantTextures(SkinCategory category)
     {
-        Texture texture = category.textures[category.currentIndex];
-        if (texture == null)
+        if (!HasTextures(category))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < category.variants.Count; i++)
+        {
+            SkinVariant variant = category.variants[i];
+            if (variant != null && variant.textures != null && variant.textures.Count > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static int GetNextVariantIndexWithTextures(SkinCategory category, int startIndex)
+    {
+        if (!HasTextures(category))
+        {
+            return startIndex;
+        }
+
+        for (int offset = 1; offset <= category.variants.Count; offset++)
+        {
+            int candidateIndex = (startIndex + offset) % category.variants.Count;
+            SkinVariant candidate = category.variants[candidateIndex];
+            if (candidate != null && candidate.textures != null && candidate.textures.Count > 0)
+            {
+                return candidateIndex;
+            }
+        }
+
+        return startIndex;
+    }
+
+    private static int GetPreviousVariantIndexWithTextures(SkinCategory category, int startIndex)
+    {
+        if (!HasTextures(category))
+        {
+            return startIndex;
+        }
+
+        for (int offset = 1; offset <= category.variants.Count; offset++)
+        {
+            int candidateIndex = (startIndex - offset + category.variants.Count) % category.variants.Count;
+            SkinVariant candidate = category.variants[candidateIndex];
+            if (candidate != null && candidate.textures != null && candidate.textures.Count > 0)
+            {
+                return candidateIndex;
+            }
+        }
+
+        return startIndex;
+    }
+
+    private static void ApplyTextureToGameObject(GameObject target, Texture texture)
+    {
+        if (target == null || texture == null)
         {
             return;
         }
 
-        Renderer targetRenderer = category.targetObject.GetComponent<Renderer>();
+        Renderer targetRenderer = target.GetComponent<Renderer>();
         if (targetRenderer != null && targetRenderer.material != null)
         {
             targetRenderer.material.mainTexture = texture;
             return;
         }
 
-        RawImage rawImage = category.targetObject.GetComponent<RawImage>();
+        RawImage rawImage = target.GetComponent<RawImage>();
         if (rawImage != null)
         {
             rawImage.texture = texture;
             return;
         }
 
-        Debug.LogWarning($"SkinManager: Target object for {category.name} has no Renderer or RawImage.");
+        Debug.LogWarning($"SkinManager: Target object {target.name} has no Renderer or RawImage.");
+    }
+
+    private static void SetVariantActive(SkinVariant variant, bool active)
+    {
+        if (variant == null)
+        {
+            return;
+        }
+
+        if (variant.character1Model != null)
+        {
+            variant.character1Model.SetActive(active);
+        }
+        if (variant.character2Model != null)
+        {
+            variant.character2Model.SetActive(active);
+        }
     }
 
     private void CreateCharacterCopies(int characterNumber, CharacterSetup sourceCharacter)

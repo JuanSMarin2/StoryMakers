@@ -77,6 +77,17 @@ public class CharacterSetup : MonoBehaviour
             copy.SetActive(true);
             targetCopies.Add(copy);
             targetRotationState.Add(GetClosestRotationStateIndex(copy.transform.eulerAngles.y));
+
+            // Registrar Animator del hijo (si existe) en AnimationManager
+            Animator foundAnimator = copy.GetComponentInChildren<Animator>();
+            if (foundAnimator != null)
+            {
+                AnimationManager animManager = FindObjectOfType<AnimationManager>();
+                if (animManager != null)
+                {
+                    animManager.SetAnimatorAt(i, foundAnimator, characterNumber == 1);
+                }
+            }
         }
     }
 

@@ -52,6 +52,8 @@ public class StoryBoardManager : MonoBehaviour
 
     private const int TotalScenes = 6;
     private int currentSceneNumber;
+
+    public int CurrentSceneNumber => currentSceneNumber;
     private int scenery1Index;
     private int scenery2Index;
     private bool storyBoardStarted;
