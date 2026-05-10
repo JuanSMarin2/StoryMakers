@@ -94,9 +94,8 @@ public class CharacterSetup : MonoBehaviour
     public bool ToggleCopyRotation(int copyIndex, int characterNumber)
     {
         List<GameObject> copies = characterNumber == 1 ? character1Copies : character2Copies;
-        List<int> rotationState = characterNumber == 1 ? character1RotationState : character2RotationState;
 
-        if (copyIndex < 0 || copyIndex >= copies.Count || copyIndex >= rotationState.Count)
+        if (copyIndex < 0 || copyIndex >= copies.Count)
         {
             return false;
         }
@@ -107,13 +106,59 @@ public class CharacterSetup : MonoBehaviour
             return false;
         }
 
-        int nextState = (rotationState[copyIndex] + 1) % RotationYCycle.Length;
-        rotationState[copyIndex] = nextState;
-
         Vector3 euler = copy.transform.eulerAngles;
-        euler.y = RotationYCycle[nextState];
+        euler.y += 30f;
         copy.transform.rotation = Quaternion.Euler(euler);
         return true;
+    }
+
+    public void ResetAllCopiesToSpawn()
+    {
+        ResetCopiesToSpawn(character1Copies, character1SpawnPoints);
+        ResetCopiesToSpawn(character2Copies, character2SpawnPoints);
+    }
+
+    public void SetCharacterZPosition(int copyIndex, int characterNumber, float zPosition)
+    {
+        List<GameObject> copies = characterNumber == 1 ? character1Copies : character2Copies;
+
+        if (copyIndex < 0 || copyIndex >= copies.Count)
+        {
+            return;
+        }
+
+        GameObject copy = copies[copyIndex];
+        if (copy == null)
+        {
+            return;
+        }
+
+        Vector3 position = copy.transform.position;
+        position.z = zPosition;
+        copy.transform.position = position;
+    }
+
+    private static void ResetCopiesToSpawn(List<GameObject> copies, List<SpawnPoint> spawnPoints)
+    {
+        if (copies == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < copies.Count; i++)
+        {
+            GameObject copy = copies[i];
+            if (copy == null)
+            {
+                continue;
+            }
+
+            SpawnPoint point;
+            if (TryGetSpawnPoint(spawnPoints, i, out point))
+            {
+                copy.transform.SetPositionAndRotation(point.position, Quaternion.Euler(point.rotationEuler));
+            }
+        }
     }
 
     private static int GetClosestRotationStateIndex(float currentY)

@@ -655,11 +655,39 @@ public class SkinManager : MonoBehaviour
             return;
         }
 
+        Renderer[] childRenderers = target.GetComponentsInChildren<Renderer>(true);
+        bool applied = false;
+        for (int i = 0; i < childRenderers.Length; i++)
+        {
+            Renderer renderer = childRenderers[i];
+            if (renderer != null && renderer.material != null)
+            {
+                renderer.material.mainTexture = texture;
+                applied = true;
+            }
+        }
+
+        if (applied)
+        {
+            return;
+        }
+
         RawImage rawImage = target.GetComponent<RawImage>();
         if (rawImage != null)
         {
             rawImage.texture = texture;
             return;
+        }
+
+        RawImage[] childRawImages = target.GetComponentsInChildren<RawImage>(true);
+        for (int i = 0; i < childRawImages.Length; i++)
+        {
+            RawImage image = childRawImages[i];
+            if (image != null)
+            {
+                image.texture = texture;
+                return;
+            }
         }
 
         Debug.LogWarning($"SkinManager: Target object {target.name} has no Renderer or RawImage.");

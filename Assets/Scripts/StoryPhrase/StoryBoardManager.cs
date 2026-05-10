@@ -34,6 +34,10 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private TMP_Text sceneDescriptionTMP;
     [SerializeField] private Text sceneDescriptionText;
 
+    [Header("Z-Axis Controls")]
+    [SerializeField] private Scrollbar character1ZAxisScrollbar;
+    [SerializeField] private Scrollbar character2ZAxisScrollbar;
+
     [Header("Results Sequence")]
     [SerializeField] private GameObject ResultsPanel;
     [SerializeField] private Image PhotoImage;
@@ -45,6 +49,8 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private List<Image> fullDisplayImages = new List<Image>();
     [SerializeField] private List<TextMeshProUGUI> fullDisplayPhrases = new List<TextMeshProUGUI>();
     [SerializeField] private Button RestartButton;
+    [Header("Reset Positions")]
+    [SerializeField] private Button resetPositionsButton;
 
     [Header("Photo Capture")]
     [SerializeField] private int captureWidth = 1280;
@@ -82,6 +88,20 @@ public class StoryBoardManager : MonoBehaviour
         {
             RestartButton.onClick.AddListener(OnRestartPressed);
         }
+        if (resetPositionsButton != null)
+        {
+            resetPositionsButton.onClick.AddListener(OnResetPositionsPressed);
+        }
+
+        if (character1ZAxisScrollbar != null)
+        {
+            character1ZAxisScrollbar.onValueChanged.AddListener(OnCharacter1ZAxisChanged);
+        }
+
+        if (character2ZAxisScrollbar != null)
+        {
+            character2ZAxisScrollbar.onValueChanged.AddListener(OnCharacter2ZAxisChanged);
+        }
 
         EnsureReferencesByName();
         SetAllStoryBoardSceneryInactive();
@@ -110,6 +130,20 @@ public class StoryBoardManager : MonoBehaviour
         if (RestartButton != null)
         {
             RestartButton.onClick.RemoveListener(OnRestartPressed);
+        }
+        if (resetPositionsButton != null)
+        {
+            resetPositionsButton.onClick.RemoveListener(OnResetPositionsPressed);
+        }
+
+        if (character1ZAxisScrollbar != null)
+        {
+            character1ZAxisScrollbar.onValueChanged.RemoveListener(OnCharacter1ZAxisChanged);
+        }
+
+        if (character2ZAxisScrollbar != null)
+        {
+            character2ZAxisScrollbar.onValueChanged.RemoveListener(OnCharacter2ZAxisChanged);
         }
 
         CleanupCapturedPhotos();
@@ -200,6 +234,7 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         SetSceneDescription(sceneNumber);
+        ResetZAxisScrollbars();
     }
 
     private void FinishStoryBoard()
@@ -217,6 +252,16 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         resultsCoroutine = StartCoroutine(ShowResultsSequence());
+    }
+
+    private void OnResetPositionsPressed()
+    {
+        if (characterSetup != null)
+        {
+            characterSetup.ResetAllCopiesToSpawn();
+        }
+
+        ResetZAxisScrollbars();
     }
 
     private void CapturePhoto()
@@ -590,6 +635,45 @@ public class StoryBoardManager : MonoBehaviour
 
         int copyIndex = currentSceneNumber - 1;
         characterSetup.ToggleCopyRotation(copyIndex, characterNumber);
+    }
+
+    private void OnCharacter1ZAxisChanged(float value)
+    {
+        if (!storyBoardStarted || characterSetup == null)
+        {
+            return;
+        }
+
+        int copyIndex = currentSceneNumber - 1;
+        float zPosition = Mathf.Lerp(0f, 8f, value);
+        characterSetup.SetCharacterZPosition(copyIndex, 1, zPosition);
+    }
+
+    private void OnCharacter2ZAxisChanged(float value)
+    {
+        if (!storyBoardStarted || characterSetup == null)
+        {
+            return;
+        }
+
+        int copyIndex = currentSceneNumber - 1;
+        float zPosition = Mathf.Lerp(0f, 8f, value);
+        characterSetup.SetCharacterZPosition(copyIndex, 2, zPosition);
+    }
+
+    private void ResetZAxisScrollbars()
+    {
+        if (character1ZAxisScrollbar != null)
+        {
+            character1ZAxisScrollbar.SetValueWithoutNotify(0f);
+            OnCharacter1ZAxisChanged(0f);
+        }
+
+        if (character2ZAxisScrollbar != null)
+        {
+            character2ZAxisScrollbar.SetValueWithoutNotify(0f);
+            OnCharacter2ZAxisChanged(0f);
+        }
     }
 
     private void DisableSceneryStageUI()
