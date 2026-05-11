@@ -9,5 +9,6 @@ public enum PlaceOption
     Hospital = 6,
     Estacion = 7,
     Banco = 8,
-    Oficina = 9
+    Oficina = 9,
+    Tienda = 10
 }

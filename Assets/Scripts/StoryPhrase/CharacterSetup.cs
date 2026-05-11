@@ -55,6 +55,8 @@ public class CharacterSetup : MonoBehaviour
             GameObject copy = Instantiate(sourceRoot, parent);
             copy.name = string.Format("{0}_Copy_{1}", sourceRoot.name, i);
 
+            DuplicateMaterials(copy);
+
             CharacterDraggable draggable = copy.GetComponent<CharacterDraggable>();
             if (draggable == null)
             {
@@ -88,6 +90,38 @@ public class CharacterSetup : MonoBehaviour
                     animManager.SetAnimatorAt(i, foundAnimator, characterNumber == 1);
                 }
             }
+        }
+    }
+
+    private static void DuplicateMaterials(GameObject root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            Material[] materials = renderer.materials;
+            for (int j = 0; j < materials.Length; j++)
+            {
+                Material material = materials[j];
+                if (material == null)
+                {
+                    continue;
+                }
+
+                materials[j] = new Material(material);
+            }
+
+            renderer.materials = materials;
         }
     }
 

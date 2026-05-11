@@ -349,6 +349,8 @@ public class SceneryManager : MonoBehaviour
                 return "el banco";
             case PlaceOption.Oficina:
                 return "la oficina";
+            case PlaceOption.Tienda:
+                return "la tienda";
             default:
                 return "lugar configurado";
         }

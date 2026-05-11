@@ -553,7 +553,7 @@ public class PhraseManager : MonoBehaviour
                 },
                 pronombres = new List<string> { "un", "una" },
                 sujetos = new List<string> { "policía", "docente", "estudiante", "delincuente" },
-                lugares = new List<string> { "el parque", "el colegio", "el teatro" }
+                lugares = new List<string> { "el parque", "el colegio", "la tienda" }
             },
             new SceneDefinition
             {
@@ -581,7 +581,7 @@ public class PhraseManager : MonoBehaviour
                 name = "Escena 4",
                 template = "Después de eso, {C2_T2} {C2_P} decide irse a _.",
                 slots = new List<WordType> { WordType.Lugar },
-                lugares = new List<string> { "el parque", "el colegio", "el teatro" }
+                lugares = new List<string> { "el parque", "el colegio", "la tienda" }
             },
             new SceneDefinition
             {
@@ -1062,6 +1062,12 @@ public class PhraseManager : MonoBehaviour
         if (normalized.Contains("oficina"))
         {
             option = PlaceOption.Oficina;
+            return true;
+        }
+
+        if (normalized.Contains("tienda"))
+        {
+            option = PlaceOption.Tienda;
             return true;
         }
 
