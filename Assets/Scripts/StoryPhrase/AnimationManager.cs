@@ -11,6 +11,12 @@ public class AnimationManager : MonoBehaviour
 
     [SerializeField] private string[] animationTriggers;
 
+    [Header("Results Storage")]
+    [SerializeField] private int totalScenes = 6;
+    [SerializeField] private string defaultTriggerName = "Default";
+    private readonly List<string> lastTriggerCharacter1 = new List<string>();
+    private readonly List<string> lastTriggerCharacter2 = new List<string>();
+
     [SerializeField] private StoryBoardManager storyBoardManager;
     [Header("UI")]
     [SerializeField] private Transform chooseAnimationsCharacter1;
@@ -20,6 +26,11 @@ public class AnimationManager : MonoBehaviour
     private int _currentAnimationIndex = 0;
     private int _currentSceneIndex = 0; //Determina el animator a usar entre 0 y 5
    
+    private void Awake()
+    {
+        EnsureTriggerStorageSize();
+    }
+
     void Start()
     {
         _currentAnimationIndex = 0;
@@ -43,6 +54,8 @@ public class AnimationManager : MonoBehaviour
         {
             animCharacter2[_currentSceneIndex].SetTrigger(triggerName);
         }
+
+        SetLastTriggerForScene(_currentSceneIndex, character1, triggerName);
     }
 
     // Register an Animator for a copy at a specific index for character1 or character2.
@@ -61,6 +74,30 @@ public class AnimationManager : MonoBehaviour
         }
 
         target[index] = animator;
+    }
+
+    public Animator GetAnimatorAt(int index, bool character1)
+    {
+        List<Animator> target = character1 ? animCharacter1 : animCharacter2;
+        if (target == null || index < 0 || index >= target.Count)
+        {
+            return null;
+        }
+
+        return target[index];
+    }
+
+    public string GetLastTriggerForScene(int sceneIndex, bool character1)
+    {
+        EnsureTriggerStorageSize();
+        List<string> target = character1 ? lastTriggerCharacter1 : lastTriggerCharacter2;
+        if (target == null || sceneIndex < 0 || sceneIndex >= target.Count)
+        {
+            return defaultTriggerName;
+        }
+
+        string stored = target[sceneIndex];
+        return string.IsNullOrWhiteSpace(stored) ? defaultTriggerName : stored;
     }
 
     public void NextAnimation( bool character1)
@@ -138,6 +175,7 @@ public class AnimationManager : MonoBehaviour
         }
 
         animator.SetTrigger(triggerName);
+        SetLastTriggerForScene(_currentSceneIndex, character1, triggerName);
         if (panel != null)
         {
             panel.gameObject.SetActive(false);
@@ -221,5 +259,33 @@ public class AnimationManager : MonoBehaviour
         {
             panel.gameObject.SetActive(active);
         }
+    }
+
+    private void EnsureTriggerStorageSize()
+    {
+        int scenes = Mathf.Max(0, totalScenes);
+
+        while (lastTriggerCharacter1.Count < scenes)
+        {
+            lastTriggerCharacter1.Add(defaultTriggerName);
+        }
+
+        while (lastTriggerCharacter2.Count < scenes)
+        {
+            lastTriggerCharacter2.Add(defaultTriggerName);
+        }
+    }
+
+    private void SetLastTriggerForScene(int sceneIndex, bool character1, string triggerName)
+    {
+        EnsureTriggerStorageSize();
+
+        List<string> target = character1 ? lastTriggerCharacter1 : lastTriggerCharacter2;
+        if (target == null || sceneIndex < 0 || sceneIndex >= target.Count)
+        {
+            return;
+        }
+
+        target[sceneIndex] = string.IsNullOrWhiteSpace(triggerName) ? defaultTriggerName : triggerName;
     }
 }

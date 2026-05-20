@@ -48,6 +48,8 @@ public class PhraseManager : MonoBehaviour
     [SerializeField] private bool wrapInsideScreen = true;
     [SerializeField] private float startOffsetX = 0f;
     [SerializeField] private float startOffsetY = 16f;
+    [SerializeField] private float textVerticalOffset = 0f;
+    [SerializeField] private float slotVerticalOffset = 0f;
     [SerializeField] private float rightPadding = 16f;
     [SerializeField] private float horizontalSpacing = 8f;
     [SerializeField] private float minLineBreakStep = 70f;
@@ -439,10 +441,20 @@ public class PhraseManager : MonoBehaviour
                 hasItemsInLine = false;
             }
 
+            float extraOffsetY = 0f;
+            if (child.GetComponent<TMP_Text>() != null)
+            {
+                extraOffsetY = textVerticalOffset;
+            }
+            else if (child.GetComponent<WordSlot>() != null)
+            {
+                extraOffsetY = slotVerticalOffset;
+            }
+
             child.anchorMin = new Vector2(0f, 1f);
             child.anchorMax = new Vector2(0f, 1f);
             child.pivot = new Vector2(0f, 1f);
-            child.anchoredPosition = new Vector2(cursorX, cursorY);
+            child.anchoredPosition = new Vector2(cursorX, cursorY + extraOffsetY);
 
             cursorX += width + horizontalSpacing;
             currentLineHeight = Mathf.Max(currentLineHeight, height);
@@ -588,12 +600,12 @@ public class PhraseManager : MonoBehaviour
                 name = "Escena 5",
                 template = "Más tarde, {C2_T2} {C2_P} estaba _ en {L2}, y se reencuentra con {C1_T2} {C1_P}.",
                 slots = new List<WordType> { WordType.Accion },
-                acciones = new List<string> { "comiendo", "robando", "estudiando" }
+                acciones = new List<string> { "bailando", "robando", "estudiando", "meditando" }
             },
             new SceneDefinition
             {
                 name = "Escena 6",
-                template = "Esto provoca que al final {C2_T2} {C2_P} y {C1_T2} {C1_P} terminen _ al otro.",
+                template = "Esto provoca que al final {C2_T2} {C2_P} y {C1_T2} {C1_P} terminen _ el uno al otro.",
                 slots = new List<WordType> { WordType.Accion },
                 acciones = new List<string> { "besando", "atacando", "gritando" }
             }

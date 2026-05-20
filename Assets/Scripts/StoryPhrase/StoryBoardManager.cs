@@ -4,9 +4,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 public class StoryBoardManager : MonoBehaviour
 {
@@ -20,6 +17,7 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private SceneryManager sceneryManager;
     [SerializeField] private PhraseManager phraseManager;
     [SerializeField] private CharacterSetup characterSetup;
+    [SerializeField] private AnimationManager animationManager;
 
     [Header("Storyboard Scenery Parents")]
     [SerializeField] private List<GameObject> storyBoardSceneryRoots = new List<GameObject>();
@@ -33,6 +31,8 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private Button rotateCharacter2Button;
     [SerializeField] private TMP_Text sceneDescriptionTMP;
     [SerializeField] private Text sceneDescriptionText;
+    [SerializeField] private List<GameObject> character1UiObjects = new List<GameObject>();
+    [SerializeField] private List<GameObject> character2UiObjects = new List<GameObject>();
 
     [Header("Z-Axis Controls")]
     [SerializeField] private Scrollbar character1ZAxisScrollbar;
@@ -42,13 +42,20 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private GameObject ResultsPanel;
     [SerializeField] private Image PhotoImage;
     [SerializeField] private TextMeshProUGUI resultsPhraseText;
-    [SerializeField] private float displayDuration = 5f;
+    [SerializeField] private float resultsIntroDuration = 1.5f;
+    [SerializeField] private float resultsSpawnOffset = 2f;
+    [SerializeField] private float resultsMoveDuration = 1.5f;
+    [SerializeField] private float resultsCharacterDelay = 0.5f;
+    [SerializeField] private float resultsHoldDuration = 3f;
+    [SerializeField] private float resultsTriggerDelay = 0.1f;
+    [SerializeField] private AnimationCurve resultsMoveCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
     [Header("Full Display")]
     [SerializeField] private GameObject FullDisplayPanel;
     [SerializeField] private List<Image> fullDisplayImages = new List<Image>();
     [SerializeField] private List<TextMeshProUGUI> fullDisplayPhrases = new List<TextMeshProUGUI>();
     [SerializeField] private Button RestartButton;
+
     [Header("Reset Positions")]
     [SerializeField] private Button resetPositionsButton;
 
@@ -88,6 +95,7 @@ public class StoryBoardManager : MonoBehaviour
         {
             RestartButton.onClick.AddListener(OnRestartPressed);
         }
+
         if (resetPositionsButton != null)
         {
             resetPositionsButton.onClick.AddListener(OnResetPositionsPressed);
@@ -131,6 +139,7 @@ public class StoryBoardManager : MonoBehaviour
         {
             RestartButton.onClick.RemoveListener(OnRestartPressed);
         }
+
         if (resetPositionsButton != null)
         {
             resetPositionsButton.onClick.RemoveListener(OnResetPositionsPressed);
@@ -233,6 +242,7 @@ public class StoryBoardManager : MonoBehaviour
             sceneCameras[rootIndex].gameObject.SetActive(true);
         }
 
+        SetCharacterUiForScene(sceneNumber);
         SetSceneDescription(sceneNumber);
         ResetZAxisScrollbars();
     }
@@ -249,6 +259,11 @@ public class StoryBoardManager : MonoBehaviour
         if (guionPanel != null)
         {
             guionPanel.SetActive(false);
+        }
+
+        if (storyBoardStageRoot != null)
+        {
+            storyBoardStageRoot.SetActive(false);
         }
 
         resultsCoroutine = StartCoroutine(ShowResultsSequence());
@@ -312,20 +327,19 @@ public class StoryBoardManager : MonoBehaviour
             ResultsPanel.SetActive(true);
         }
 
+        if (resultsIntroDuration > 0f)
+        {
+            yield return new WaitForSeconds(resultsIntroDuration);
+        }
+
+        if (ResultsPanel != null)
+        {
+            ResultsPanel.SetActive(false);
+        }
+
         for (int i = 0; i < TotalScenes; i++)
         {
-            if (PhotoImage != null)
-            {
-                PhotoImage.sprite = i < capturedPhotos.Count ? capturedPhotos[i] : null;
-            }
-
-            if (resultsPhraseText != null)
-            {
-                string phrase = i < capturedPhrases.Count ? capturedPhrases[i] : "Frase no disponible";
-                resultsPhraseText.text = string.Format("Escena {0}: {1}", i + 1, phrase);
-            }
-
-            yield return StartCoroutine(WaitForResultsAdvance());
+            yield return StartCoroutine(PlayCinematicScene(i + 1));
         }
 
         ShowFullDisplay();
@@ -362,97 +376,291 @@ public class StoryBoardManager : MonoBehaviour
         }
     }
 
-    private IEnumerator WaitForResultsAdvance()
+
+    private IEnumerator PlayCinematicScene(int sceneNumber)
     {
+        if (sceneNumber < 1 || sceneNumber > TotalScenes)
+        {
+            yield break;
+        }
+
+        SetupResultsScene(sceneNumber, false);
+        UpdateResultsPhrase(sceneNumber);
+
+        int sceneIndex = sceneNumber - 1;
+        CharacterDraggable[] sceneDraggables = GetSceneDraggables(sceneIndex);
+        CharacterDraggable character1 = FindSceneCharacter(sceneDraggables, sceneIndex, 0);
+        CharacterDraggable character2 = FindSceneCharacter(sceneDraggables, sceneIndex, 1);
+        SetSceneDraggablesActive(sceneDraggables, false);
+
+        Vector3 finalPosition1 = Vector3.zero;
+        Vector3 finalPosition2 = Vector3.zero;
+        bool hasCharacter1 = false;
+        bool hasCharacter2 = false;
+
+        if (character1 != null)
+        {
+            finalPosition1 = character1.transform.position;
+            hasCharacter1 = true;
+        }
+
+        float appliedDelay = 0f;
+        if (hasCharacter1 && resultsCharacterDelay > 0f)
+        {
+            appliedDelay = resultsCharacterDelay;
+        }
+
+        if (character2 != null)
+        {
+            finalPosition2 = character2.transform.position;
+            hasCharacter2 = true;
+        }
+
+        Vector3 offsetDir1 = Vector3.left;
+        Vector3 offsetDir2 = Vector3.right;
+        if (hasCharacter1 && hasCharacter2)
+        {
+            bool character1IsLeft = finalPosition1.x <= finalPosition2.x;
+            offsetDir1 = character1IsLeft ? Vector3.left : Vector3.right;
+            offsetDir2 = character1IsLeft ? Vector3.right : Vector3.left;
+        }
+
+        if (hasCharacter1)
+        {
+            PrepareCharacterForCinematic(sceneIndex, true, character1.transform, offsetDir1);
+        }
+
+        if (hasCharacter2)
+        {
+            PrepareCharacterForCinematic(sceneIndex, false, character2.transform, offsetDir2);
+        }
+
+        ResetOtherSceneAnimatorsToDefault(sceneIndex);
+
+        ActivateResultsCamera(sceneIndex);
+
+        if (hasCharacter1)
+        {
+            StartCoroutine(PlayCharacterCinematic(sceneIndex, true, character1.transform, finalPosition1));
+        }
+
+        if (hasCharacter2 && appliedDelay > 0f)
+        {
+            yield return new WaitForSeconds(appliedDelay);
+        }
+
+        if (hasCharacter2)
+        {
+            StartCoroutine(PlayCharacterCinematic(sceneIndex, false, character2.transform, finalPosition2));
+        }
+
+        float totalMoveTime = Mathf.Max(0.1f, resultsMoveDuration + appliedDelay);
+        yield return new WaitForSeconds(totalMoveTime);
+
+        if (resultsHoldDuration > 0f)
+        {
+            yield return new WaitForSeconds(resultsHoldDuration);
+        }
+    }
+
+    private IEnumerator PlayCharacterCinematic(int sceneIndex, bool character1, Transform target, Vector3 finalPosition)
+    {
+        if (target == null)
+        {
+            yield break;
+        }
+
+        Animator animator = animationManager != null ? animationManager.GetAnimatorAt(sceneIndex, character1) : null;
+
+        if (resultsTriggerDelay > 0f)
+        {
+            yield return new WaitForSeconds(resultsTriggerDelay);
+        }
+
+        if (animator != null && animationManager != null)
+        {
+            string finalTrigger = animationManager.GetLastTriggerForScene(sceneIndex, character1);
+            animator.SetTrigger(finalTrigger);
+        }
+
+        Vector3 startPosition = target.position;
+        float duration = Mathf.Max(0.01f, resultsMoveDuration);
         float elapsed = 0f;
 
-        while (elapsed < displayDuration)
+        while (elapsed < duration)
         {
-            if (IsAdvanceInputPressed())
-            {
-                break;
-            }
-
             elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = resultsMoveCurve != null ? resultsMoveCurve.Evaluate(t) : Mathf.SmoothStep(0f, 1f, t);
+            target.position = Vector3.LerpUnclamped(startPosition, finalPosition, eased);
             yield return null;
         }
 
-        while (IsAnyInputHeld())
+        target.position = finalPosition;
+    }
+
+    private void SetupResultsScene(int sceneNumber, bool activateCamera)
+    {
+        SetAllStoryBoardSceneryInactive();
+        SetAllCamerasActive(false);
+
+        int rootIndex = sceneNumber - 1;
+        if (rootIndex >= 0 && rootIndex < storyBoardSceneryRoots.Count)
         {
-            yield return null;
+            GameObject sceneRoot = storyBoardSceneryRoots[rootIndex];
+            if (sceneRoot != null)
+            {
+                sceneRoot.SetActive(true);
+                int sceneryIndex = GetSceneryIndexForScene(sceneNumber);
+                ActivateSceneryVariant(sceneRoot.transform, sceneryIndex);
+            }
+        }
+
+        if (activateCamera)
+        {
+            ActivateResultsCamera(rootIndex);
+        }
+
+        SetCharacterUiForScene(sceneNumber);
+    }
+
+    private void SetCharacterUiForScene(int sceneNumber)
+    {
+        bool character1Active = sceneNumber != 4;
+        bool character2Active = sceneNumber != 1;
+
+        SetUiObjectsActive(character1UiObjects, character1Active);
+        SetUiObjectsActive(character2UiObjects, character2Active);
+    }
+
+    private static void SetUiObjectsActive(List<GameObject> targets, bool active)
+    {
+        if (targets == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            GameObject target = targets[i];
+            if (target != null)
+            {
+                target.SetActive(active);
+            }
         }
     }
 
-    private static bool IsAdvanceInputPressed()
+    private void ActivateResultsCamera(int sceneIndex)
     {
-#if ENABLE_INPUT_SYSTEM
-        Mouse mouse = Mouse.current;
-        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+        if (sceneIndex >= 0 && sceneIndex < sceneCameras.Count && sceneCameras[sceneIndex] != null)
         {
-            return true;
+            sceneCameras[sceneIndex].gameObject.SetActive(true);
         }
-
-        Touchscreen touch = Touchscreen.current;
-        if (touch != null)
-        {
-            var touches = touch.touches;
-            for (int i = 0; i < touches.Count; i++)
-            {
-                if (touches[i] != null && touches[i].press.wasPressedThisFrame)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-#else
-        if (Input.GetMouseButtonDown(0))
-        {
-            return true;
-        }
-
-        if (Input.touchCount > 0)
-        {
-            for (int i = 0; i < Input.touchCount; i++)
-            {
-                if (Input.GetTouch(i).phase == TouchPhase.Began)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-#endif
     }
 
-    private static bool IsAnyInputHeld()
+    private Vector3 PrepareCharacterForCinematic(int sceneIndex, bool character1, Transform target, Vector3 offsetDirection)
     {
-#if ENABLE_INPUT_SYSTEM
-        Mouse mouse = Mouse.current;
-        if (mouse != null && mouse.leftButton.isPressed)
+        Vector3 finalPosition = target.position;
+        Animator animator = animationManager != null ? animationManager.GetAnimatorAt(sceneIndex, character1) : null;
+        if (animator != null)
         {
-            return true;
+            animator.SetTrigger("Default");
         }
 
-        Touchscreen touch = Touchscreen.current;
-        if (touch != null)
+        target.position = finalPosition + offsetDirection * resultsSpawnOffset;
+        return finalPosition;
+    }
+
+    private void ResetOtherSceneAnimatorsToDefault(int activeSceneIndex)
+    {
+        if (animationManager == null)
         {
-            var touches = touch.touches;
-            for (int i = 0; i < touches.Count; i++)
+            return;
+        }
+
+        for (int i = 0; i < TotalScenes; i++)
+        {
+            if (i == activeSceneIndex)
             {
-                if (touches[i] != null && touches[i].press.isPressed)
-                {
-                    return true;
-                }
+                continue;
+            }
+
+            Animator anim1 = animationManager.GetAnimatorAt(i, true);
+            if (anim1 != null)
+            {
+                anim1.SetTrigger("Default");
+            }
+
+            Animator anim2 = animationManager.GetAnimatorAt(i, false);
+            if (anim2 != null)
+            {
+                anim2.SetTrigger("Default");
+            }
+        }
+    }
+
+    private void UpdateResultsPhrase(int sceneNumber)
+    {
+        if (resultsPhraseText == null)
+        {
+            return;
+        }
+
+        string phrase = sceneNumber - 1 < capturedPhrases.Count ? capturedPhrases[sceneNumber - 1] : "Frase no disponible";
+        resultsPhraseText.text = string.Format("Escena {0}: {1}", sceneNumber, phrase);
+    }
+
+    private static CharacterDraggable[] GetSceneDraggables(int sceneIndex)
+    {
+        CharacterDraggable[] draggables = FindObjectsOfType<CharacterDraggable>(true);
+        List<CharacterDraggable> matches = new List<CharacterDraggable>();
+
+        for (int i = 0; i < draggables.Length; i++)
+        {
+            CharacterDraggable draggable = draggables[i];
+            if (draggable != null && draggable.CopyIndex == sceneIndex)
+            {
+                matches.Add(draggable);
             }
         }
 
-        return false;
-#else
-        return Input.GetMouseButton(0) || Input.touchCount > 0;
-#endif
+        return matches.ToArray();
+    }
+
+    private static CharacterDraggable FindSceneCharacter(CharacterDraggable[] draggables, int sceneIndex, int characterIndex)
+    {
+        if (draggables == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < draggables.Length; i++)
+        {
+            CharacterDraggable draggable = draggables[i];
+            if (draggable != null && draggable.CopyIndex == sceneIndex && draggable.CharacterIndex == characterIndex)
+            {
+                return draggable;
+            }
+        }
+
+        return null;
+    }
+
+    private static void SetSceneDraggablesActive(CharacterDraggable[] draggables, bool active)
+    {
+        if (draggables == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < draggables.Length; i++)
+        {
+            CharacterDraggable draggable = draggables[i];
+            if (draggable != null)
+            {
+                draggable.IsDraggable = active;
+            }
+        }
     }
 
     private void EnsureCapturedStorageSize()
@@ -543,7 +751,7 @@ public class StoryBoardManager : MonoBehaviour
     private void OnRestartPressed()
     {
         Scene activeScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(activeScene.buildIndex);
+        SceneManager.LoadScene("MainMenu");
     }
 
     private void CaptureSceneryIndexes()
