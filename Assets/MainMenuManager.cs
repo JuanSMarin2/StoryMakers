@@ -7,6 +7,12 @@ public class MainMenuManager : MonoBehaviour
   
   public void StartGame()
     {
+        if (TransitionPanelManager.Instance != null)
+        {
+            TransitionPanelManager.Instance.ChangeScene("Intro");
+            return;
+        }
+
         SceneManager.LoadScene("Intro");
     }
 

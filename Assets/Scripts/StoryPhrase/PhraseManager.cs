@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using TMPro;
@@ -63,6 +64,7 @@ public class PhraseManager : MonoBehaviour
     [SerializeField] private Button continueButton;
   
     [SerializeField] private GameObject guionPanel;
+    [SerializeField] private UiPanelTransition guionPanelTransition;
 
     private readonly List<WordSlot> slots = new List<WordSlot>();
     private string[] parsedSegments;
@@ -366,9 +368,9 @@ public class PhraseManager : MonoBehaviour
 
         if (currentSceneIndex >= scenes.Count - 1)
         {
-            if (guionPanel != null)
+            if (guionPanel != null && guionPanelTransition != null)
             {
-                guionPanel.SetActive(false);
+                guionPanelTransition.TransitionOut();
             }
 
             Debug.Log($"Historia finalizada: {finalResult}");
@@ -556,58 +558,54 @@ public class PhraseManager : MonoBehaviour
             new SceneDefinition
             {
                 name = "Escena 1",
-                template = "Un día, _ _ andaba por _.",
+                template = "Un día, _ estaba caminando por _.",
                 slots = new List<WordType>
                 {
-                    WordType.Pronombre,
                     WordType.Sujeto,
                     WordType.Lugar,
                 },
-                pronombres = new List<string> { "un", "una" },
-                sujetos = new List<string> { "policía", "docente", "estudiante", "delincuente" },
+                sujetos = new List<string> { "David", "Alex", "Andrés", "María", "Ana", "Paula"},
                 lugares = new List<string> { "el parque", "el colegio", "la tienda" }
             },
             new SceneDefinition
             {
                 name = "Escena 2",
-                template = "Cuando de repente _ _ llega y le _ a {C1_T2} {C1_P}.",
+                template = "Cuando de repente _ llega y le _ a {C1_T1}.",
                 slots = new List<WordType>
                 {
-                    WordType.Pronombre,
                     WordType.Sujeto,
                     WordType.Accion,
                 },
-                pronombres = new List<string> { "un", "una" },
-                sujetos = new List<string> { "policía", "docente", "estudiante", "delincuente" },
-                acciones = new List<string> { "da un beso", "roba", "pega" }
+                sujetos = new List<string> { "David", "Alex", "Andrés", "María", "Ana", "Paula"},
+                acciones = new List<string> { "pega", "roba", "grita" }
             },
             new SceneDefinition
             {
                 name = "Escena 3",
-                template = "Esto provoca que {C1_T2} {C1_P} le _ a {C2_T2} {C2_P}.",
+                template = "{C1_MOLESTO} por lo ocurrido, {C1_T1} decide _ a {C2_T1}.",
                 slots = new List<WordType> { WordType.Accion },
-                acciones = new List<string> { "de un beso", "pegue", "de persecución" }
+                acciones = new List<string> { "gritarle", "perseguir", "golpear", "hablarle" }
             },
             new SceneDefinition
             {
                 name = "Escena 4",
-                template = "Después de eso, {C2_T2} {C2_P} decide irse a _.",
+                template = "Después del conflicto, {C2_T1} decide irse a _.",
                 slots = new List<WordType> { WordType.Lugar },
                 lugares = new List<string> { "el parque", "el colegio", "la tienda" }
             },
             new SceneDefinition
             {
                 name = "Escena 5",
-                template = "Más tarde, {C2_T2} {C2_P} estaba _ en {L2}, y se reencuentra con {C1_T2} {C1_P}.",
+                template = "Tiempo después, {C2_T1} estaba _ en {L2}, cuando se reencuentra con {C1_T1}.",
                 slots = new List<WordType> { WordType.Accion },
-                acciones = new List<string> { "bailando", "robando", "estudiando", "meditando" }
+                acciones = new List<string> { "bailando", "meditando", "cantando", "hablando", "saltando" }
             },
             new SceneDefinition
             {
                 name = "Escena 6",
-                template = "Esto provoca que al final {C2_T2} {C2_P} y {C1_T2} {C1_P} terminen _ el uno al otro.",
+                template = "Al final, {C2_T1} y {C1_T1} terminan _ el uno al otro.",
                 slots = new List<WordType> { WordType.Accion },
-                acciones = new List<string> { "besando", "atacando", "gritando" }
+                acciones = new List<string> { "gritando", "golpeando", "hablando", "besando" }
             }
         };
     }
@@ -706,13 +704,50 @@ public class PhraseManager : MonoBehaviour
         Dictionary<WordType, int> typeUsageCount = CountTypeUsage(scene.slots);
 
         AddEntriesRepeated(entries, scene.pronombres, WordType.Pronombre, GetUsageCount(typeUsageCount, WordType.Pronombre));
-        AddEntriesRepeated(entries, scene.sujetos, WordType.Sujeto, GetUsageCount(typeUsageCount, WordType.Sujeto));
+        AddEntriesRepeated(entries, GetFilteredSubjects(scene), WordType.Sujeto, GetUsageCount(typeUsageCount, WordType.Sujeto));
         AddEntriesRepeated(entries, scene.lugares, WordType.Lugar, GetUsageCount(typeUsageCount, WordType.Lugar));
         AddEntriesRepeated(entries, scene.acciones, WordType.Accion, GetUsageCount(typeUsageCount, WordType.Accion));
         AddEntriesRepeated(entries, scene.accionesP1, WordType.AccionP1, GetUsageCount(typeUsageCount, WordType.AccionP1));
         AddEntriesRepeated(entries, scene.accionesP2, WordType.AccionP2, GetUsageCount(typeUsageCount, WordType.AccionP2));
 
         return entries;
+    }
+
+    private List<string> GetFilteredSubjects(SceneDefinition scene)
+    {
+        if (scene == null || scene.sujetos == null)
+        {
+            return scene != null ? scene.sujetos : null;
+        }
+
+        if (currentSceneIndex != 1)
+        {
+            return scene.sujetos;
+        }
+
+        string selectedName = character1Ready ? character1.personaje : string.Empty;
+        if (string.IsNullOrWhiteSpace(selectedName))
+        {
+            return scene.sujetos;
+        }
+
+        List<string> filtered = new List<string>();
+        foreach (string sujeto in scene.sujetos)
+        {
+            if (string.IsNullOrWhiteSpace(sujeto))
+            {
+                continue;
+            }
+
+            if (string.Equals(sujeto.Trim(), selectedName.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            filtered.Add(sujeto);
+        }
+
+        return filtered;
     }
 
     private void CaptureSelectionsFromSceneOne()
@@ -722,11 +757,10 @@ public class PhraseManager : MonoBehaviour
             return;
         }
 
-        string c1Tipo1 = GetSlotValue(0, "un");
-        string c1Personaje = GetSlotValue(1, "estudiante");
-        selectedLugarScene1 = NormalizeWordValue(GetSlotValue(2, string.Empty));
+        string c1Personaje = GetSlotValue(0, "Chris");
+        selectedLugarScene1 = NormalizeWordValue(GetSlotValue(1, string.Empty));
 
-        character1 = BuildCharacterSelection(c1Tipo1, c1Personaje);
+        character1 = BuildCharacterSelection(c1Personaje);
         character1Ready = true;
     }
 
@@ -737,10 +771,9 @@ public class PhraseManager : MonoBehaviour
             return;
         }
 
-        string c2Tipo1 = GetSlotValue(0, "un");
-        string c2Personaje = GetSlotValue(1, "estudiante");
+        string c2Personaje = GetSlotValue(0, "Chris");
 
-        character2 = BuildCharacterSelection(c2Tipo1, c2Personaje);
+        character2 = BuildCharacterSelection(c2Personaje);
         character2Ready = true;
     }
 
@@ -750,37 +783,35 @@ public class PhraseManager : MonoBehaviour
 
         if (characterNumber == 1)
         {
-            if (currentSceneIndex != 0 || slots.Count < 2)
+            if (currentSceneIndex != 0 || slots.Count < 1)
             {
                 return false;
             }
 
-            string tipo1;
             string personaje;
-            if (!TryGetSlotSelectedValue(0, out tipo1) || !TryGetSlotSelectedValue(1, out personaje))
+            if (!TryGetSlotSelectedValue(0, out personaje))
             {
                 return false;
             }
 
-            selection = BuildCharacterSelection(tipo1, personaje);
+            selection = BuildCharacterSelection(personaje);
             return true;
         }
 
         if (characterNumber == 2)
         {
-            if (currentSceneIndex != 1 || slots.Count < 2)
+            if (currentSceneIndex != 1 || slots.Count < 1)
             {
                 return false;
             }
 
-            string tipo1;
             string personaje;
-            if (!TryGetSlotSelectedValue(0, out tipo1) || !TryGetSlotSelectedValue(1, out personaje))
+            if (!TryGetSlotSelectedValue(0, out personaje))
             {
                 return false;
             }
 
-            selection = BuildCharacterSelection(tipo1, personaje);
+            selection = BuildCharacterSelection(personaje);
             return true;
         }
 
@@ -925,6 +956,8 @@ public class PhraseManager : MonoBehaviour
                 .Replace("{C1_P}", character1.personaje);
         }
 
+        resolved = resolved.Replace("{C1_MOLESTO}", GetCharacter1MolestoToken());
+
         if (character2Ready)
         {
             resolved = resolved
@@ -948,18 +981,50 @@ public class PhraseManager : MonoBehaviour
         return resolved;
     }
 
-    private static CharacterSelection BuildCharacterSelection(string tipo1, string personaje)
+    private string GetCharacter1MolestoToken()
     {
-        string normalizedTipo1 = string.IsNullOrWhiteSpace(tipo1) ? "un" : tipo1.Trim().ToLowerInvariant();
-        bool isFeminine = normalizedTipo1 == "una";
+        string name = character1Ready ? character1.personaje : string.Empty;
+        if (IsFemaleName(name))
+        {
+            return "Molesta";
+        }
+
+        return "Molesto";
+    }
+
+    private static bool IsFemaleName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        string normalized = NormalizeNameForGender(name);
+        return normalized == "maria" || normalized == "ana" || normalized == "paula";
+    }
+
+    private static string NormalizeNameForGender(string value)
+    {
+        string normalized = value.Trim().ToLowerInvariant();
+        return normalized
+            .Replace("á", "a")
+            .Replace("é", "e")
+            .Replace("í", "i")
+            .Replace("ó", "o")
+            .Replace("ú", "u");
+    }
+
+    private static CharacterSelection BuildCharacterSelection(string personaje)
+    {
+        string normalizedName = string.IsNullOrWhiteSpace(personaje) ? "Chris" : personaje.Trim();
 
         return new CharacterSelection
         {
-            tipo1 = isFeminine ? "una" : "un",
-            tipo2 = isFeminine ? "la" : "el",
-            tipo2Capital = isFeminine ? "La" : "El",
-            tipo3 = isFeminine ? "ella" : "él",
-            personaje = string.IsNullOrWhiteSpace(personaje) ? "estudiante" : personaje.Trim().ToLowerInvariant()
+            tipo1 = normalizedName,
+            tipo2 = string.Empty,
+            tipo2Capital = string.Empty,
+            tipo3 = string.Empty,
+            personaje = normalizedName
         };
     }
 

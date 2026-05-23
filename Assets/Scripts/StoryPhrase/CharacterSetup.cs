@@ -16,6 +16,13 @@ public class CharacterSetup : MonoBehaviour
     [Header("Settings")]
     [SerializeField] private int copiesPerCharacter = 6;
 
+    [Header("Z Position Stabilization")]
+    [SerializeField] private bool snapToGroundOnZMove = true;
+    [SerializeField] private LayerMask groundMask = 1 << 0;
+    [SerializeField] private float groundRaycastHeight = 2f;
+    [SerializeField] private float groundOffset = 0f;
+    [SerializeField] private bool freezeRigidbodyOnZMove = true;
+
     [Header("Character 1")]
     [SerializeField] private Transform character1Parent;
     [SerializeField] private List<SpawnPoint> character1SpawnPoints = new List<SpawnPoint>();
@@ -169,7 +176,93 @@ public class CharacterSetup : MonoBehaviour
 
         Vector3 position = copy.transform.position;
         position.z = zPosition;
+
+        if (snapToGroundOnZMove)
+        {
+            position.y = ResolveGroundY(position, copy.transform);
+        }
+
+        Rigidbody rb = copy.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            if (freezeRigidbodyOnZMove)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            if (rb.isKinematic)
+            {
+                rb.position = position;
+            }
+            else
+            {
+                rb.MovePosition(position);
+            }
+
+            return;
+        }
+
         copy.transform.position = position;
+    }
+
+    public void SetCharacterCollidersEnabled(int copyIndex, int characterNumber, bool enabled)
+    {
+        GameObject copy = GetCopyObject(copyIndex, characterNumber);
+        if (copy == null)
+        {
+            return;
+        }
+
+        SetCollidersEnabled(copy, enabled);
+    }
+
+    private float ResolveGroundY(Vector3 position, Transform root)
+    {
+        Vector3 origin = position + Vector3.up * Mathf.Max(0.01f, groundRaycastHeight);
+        float maxDistance = groundRaycastHeight * 2f + 0.1f;
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, maxDistance, groundMask, QueryTriggerInteraction.Ignore);
+        if (hits == null || hits.Length == 0)
+        {
+            return position.y;
+        }
+
+        float bestY = float.NegativeInfinity;
+        bool found = false;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit hit = hits[i];
+            if (hit.collider == null)
+            {
+                continue;
+            }
+
+            if (root != null && hit.collider.transform.IsChildOf(root))
+            {
+                continue;
+            }
+
+            if (hit.point.y > bestY)
+            {
+                bestY = hit.point.y;
+                found = true;
+            }
+        }
+
+        return found ? bestY + groundOffset : position.y;
+    }
+
+    public Transform GetCopyTransform(int copyIndex, int characterNumber)
+    {
+        List<GameObject> copies = characterNumber == 1 ? character1Copies : character2Copies;
+        if (copyIndex < 0 || copyIndex >= copies.Count)
+        {
+            return null;
+        }
+
+        GameObject copy = copies[copyIndex];
+        return copy != null ? copy.transform : null;
     }
 
     private static void ResetCopiesToSpawn(List<GameObject> copies, List<SpawnPoint> spawnPoints)
@@ -255,5 +348,29 @@ public class CharacterSetup : MonoBehaviour
         }
 
         copies.Clear();
+    }
+
+    private GameObject GetCopyObject(int copyIndex, int characterNumber)
+    {
+        List<GameObject> copies = characterNumber == 1 ? character1Copies : character2Copies;
+        if (copyIndex < 0 || copyIndex >= copies.Count)
+        {
+            return null;
+        }
+
+        return copies[copyIndex];
+    }
+
+    private static void SetCollidersEnabled(GameObject copy, bool enabled)
+    {
+        Collider[] colliders = copy.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider col = colliders[i];
+            if (col != null)
+            {
+                col.enabled = enabled;
+            }
+        }
     }
 }

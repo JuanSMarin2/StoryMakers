@@ -11,6 +11,7 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private GameObject sceneryStageRoot;
     [SerializeField] private List<GameObject> sceneryUiObjectsToDisable = new List<GameObject>();
     [SerializeField] private GameObject storyBoardStageRoot;
+    [SerializeField] private UiPanelTransition storyBoardStageTransition;
     [SerializeField] private GameObject guionPanel;
 
     [Header("Dependencies")]
@@ -29,17 +30,27 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private Button continueButton;
     [SerializeField] private Button rotateCharacter1Button;
     [SerializeField] private Button rotateCharacter2Button;
+    [SerializeField] private TMP_Text characterText1;
+    [SerializeField] private TMP_Text characterText2;
+    [SerializeField] private GameObject namePositionText1;
+    [SerializeField] private GameObject namePositionText2;
     [SerializeField] private TMP_Text sceneDescriptionTMP;
     [SerializeField] private Text sceneDescriptionText;
     [SerializeField] private List<GameObject> character1UiObjects = new List<GameObject>();
     [SerializeField] private List<GameObject> character2UiObjects = new List<GameObject>();
+
+    [Header("UI Follow")]
+    [SerializeField] private bool useScreenSpaceUi = true;
+    [SerializeField] private Camera uiFollowCamera;
 
     [Header("Z-Axis Controls")]
     [SerializeField] private Scrollbar character1ZAxisScrollbar;
     [SerializeField] private Scrollbar character2ZAxisScrollbar;
 
     [Header("Results Sequence")]
+    [SerializeField] private GameObject resultsTextSpace;
     [SerializeField] private GameObject ResultsPanel;
+    [SerializeField] private UiPanelTransition resultsPanelTransition;
     [SerializeField] private Image PhotoImage;
     [SerializeField] private TextMeshProUGUI resultsPhraseText;
     [SerializeField] private float resultsIntroDuration = 1.5f;
@@ -52,6 +63,7 @@ public class StoryBoardManager : MonoBehaviour
 
     [Header("Full Display")]
     [SerializeField] private GameObject FullDisplayPanel;
+    [SerializeField] private UiPanelTransition fullDisplayPanelTransition;
     [SerializeField] private List<Image> fullDisplayImages = new List<Image>();
     [SerializeField] private List<TextMeshProUGUI> fullDisplayPhrases = new List<TextMeshProUGUI>();
     [SerializeField] private Button RestartButton;
@@ -73,6 +85,19 @@ public class StoryBoardManager : MonoBehaviour
     private readonly List<Sprite> capturedPhotos = new List<Sprite>();
     private readonly List<string> capturedPhrases = new List<string>();
     private Coroutine resultsCoroutine;
+
+    private struct UiFollowEntry
+    {
+        public Transform target;
+        public Transform uiTransform;
+        public Vector3 offset;
+        public bool useScreenSpace;
+        public Camera camera;
+    }
+
+    private readonly List<UiFollowEntry> character1Follow = new List<UiFollowEntry>();
+    private readonly List<UiFollowEntry> character2Follow = new List<UiFollowEntry>();
+    private readonly Dictionary<Transform, Vector3> uiInitialPositions = new Dictionary<Transform, Vector3>();
 
     private void Awake()
     {
@@ -110,12 +135,12 @@ public class StoryBoardManager : MonoBehaviour
         {
             character2ZAxisScrollbar.onValueChanged.AddListener(OnCharacter2ZAxisChanged);
         }
-
         EnsureReferencesByName();
         SetAllStoryBoardSceneryInactive();
         SetAllCamerasActive(false);
         EnsureCapturedStorageSize();
         SetResultsPanelsActive(false);
+        CacheInitialUiPositions();
     }
 
     private void OnDestroy()
@@ -171,10 +196,7 @@ public class StoryBoardManager : MonoBehaviour
         ClearCapturedData();
         SetResultsPanelsActive(false);
 
-        if (storyBoardStageRoot != null)
-        {
-            storyBoardStageRoot.SetActive(true);
-        }
+        SetPanelActive(storyBoardStageRoot, storyBoardStageTransition, true);
 
         if (continueButton != null)
         {
@@ -184,6 +206,17 @@ public class StoryBoardManager : MonoBehaviour
         storyBoardStarted = true;
         currentSceneNumber = 1;
         ShowScene(currentSceneNumber);
+    }
+
+    private void LateUpdate()
+    {
+        if (!storyBoardStarted)
+        {
+            return;
+        }
+
+        UpdateFollowList(character1Follow);
+        UpdateFollowList(character2Follow);
     }
 
     private void OnContinuePressed()
@@ -245,6 +278,8 @@ public class StoryBoardManager : MonoBehaviour
         SetCharacterUiForScene(sceneNumber);
         SetSceneDescription(sceneNumber);
         ResetZAxisScrollbars();
+        BindCharacterUiFollow(sceneNumber);
+        UpdateCharacterNameTexts();
     }
 
     private void FinishStoryBoard()
@@ -261,10 +296,7 @@ public class StoryBoardManager : MonoBehaviour
             guionPanel.SetActive(false);
         }
 
-        if (storyBoardStageRoot != null)
-        {
-            storyBoardStageRoot.SetActive(false);
-        }
+        SetPanelActive(storyBoardStageRoot, storyBoardStageTransition, false);
 
         resultsCoroutine = StartCoroutine(ShowResultsSequence());
     }
@@ -277,6 +309,7 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         ResetZAxisScrollbars();
+        BindCharacterUiFollow(currentSceneNumber);
     }
 
     private void CapturePhoto()
@@ -322,20 +355,19 @@ public class StoryBoardManager : MonoBehaviour
 
     private IEnumerator ShowResultsSequence()
     {
-        if (ResultsPanel != null)
+        if (resultsTextSpace != null)
         {
-            ResultsPanel.SetActive(true);
+            resultsTextSpace.SetActive(true);
         }
+
+        SetPanelActive(ResultsPanel, resultsPanelTransition, true);
 
         if (resultsIntroDuration > 0f)
         {
             yield return new WaitForSeconds(resultsIntroDuration);
         }
 
-        if (ResultsPanel != null)
-        {
-            ResultsPanel.SetActive(false);
-        }
+        SetPanelActive(ResultsPanel, resultsPanelTransition, false);
 
         for (int i = 0; i < TotalScenes; i++)
         {
@@ -348,15 +380,8 @@ public class StoryBoardManager : MonoBehaviour
 
     private void ShowFullDisplay()
     {
-        if (ResultsPanel != null)
-        {
-            ResultsPanel.SetActive(false);
-        }
-
-        if (FullDisplayPanel != null)
-        {
-            FullDisplayPanel.SetActive(true);
-        }
+        SetPanelActive(ResultsPanel, resultsPanelTransition, false);
+        SetPanelActive(FullDisplayPanel, fullDisplayPanelTransition, true);
 
         for (int i = 0; i < fullDisplayImages.Count; i++)
         {
@@ -531,6 +556,57 @@ public class StoryBoardManager : MonoBehaviour
 
         SetUiObjectsActive(character1UiObjects, character1Active);
         SetUiObjectsActive(character2UiObjects, character2Active);
+
+        if (characterText1 != null)
+        {
+            characterText1.gameObject.SetActive(character1Active);
+        }
+
+        if (characterText2 != null)
+        {
+            characterText2.gameObject.SetActive(character2Active);
+        }
+
+        if (namePositionText1 != null)
+        {
+            namePositionText1.gameObject.SetActive(character1Active);
+        }
+
+        if (namePositionText2 != null)
+        {
+            namePositionText2.gameObject.SetActive(character2Active);
+        }
+    }
+
+    private void UpdateCharacterNameTexts()
+    {
+        if (phraseManager == null)
+        {
+            return;
+        }
+
+        string tipo1;
+        string personaje;
+
+        if (phraseManager.TryGetCharacterDescriptor(1, out tipo1, out personaje))
+        {
+            SetCharacterNameText(characterText1, personaje);
+        }
+
+        if (phraseManager.TryGetCharacterDescriptor(2, out tipo1, out personaje))
+        {
+            SetCharacterNameText(characterText2, personaje);
+        }
+    }
+
+    private static void SetCharacterNameText(TMP_Text target, string value)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        target.text = string.IsNullOrWhiteSpace(value) ? string.Empty : value;
     }
 
     private static void SetUiObjectsActive(List<GameObject> targets, bool active)
@@ -737,19 +813,43 @@ public class StoryBoardManager : MonoBehaviour
 
     private void SetResultsPanelsActive(bool active)
     {
-        if (ResultsPanel != null)
+        SetPanelActive(ResultsPanel, resultsPanelTransition, active);
+        SetPanelActive(FullDisplayPanel, fullDisplayPanelTransition, active);
+    }
+
+    private static void SetPanelActive(GameObject panel, UiPanelTransition transition, bool active)
+    {
+        if (panel == null)
         {
-            ResultsPanel.SetActive(active);
+            return;
         }
 
-        if (FullDisplayPanel != null)
+        UiPanelTransition resolvedTransition = transition != null ? transition : panel.GetComponent<UiPanelTransition>();
+        if (resolvedTransition != null)
         {
-            FullDisplayPanel.SetActive(active);
+            if (active)
+            {
+                resolvedTransition.TransitionIn();
+            }
+            else
+            {
+                resolvedTransition.TransitionOut();
+            }
+
+            return;
         }
+
+        panel.SetActive(active);
     }
 
     private void OnRestartPressed()
     {
+        if (TransitionPanelManager.Instance != null)
+        {
+            TransitionPanelManager.Instance.ChangeScene("MainMenu");
+            return;
+        }
+
         Scene activeScene = SceneManager.GetActiveScene();
         SceneManager.LoadScene("MainMenu");
     }
@@ -832,6 +932,244 @@ public class StoryBoardManager : MonoBehaviour
         {
             sceneDescriptionText.text = finalText;
         }
+    }
+
+    private void CacheInitialUiPositions()
+    {
+        CacheInitialPositions(character1UiObjects);
+        CacheInitialPositions(character2UiObjects);
+        CacheInitialPosition(rotateCharacter1Button);
+        CacheInitialPosition(rotateCharacter2Button);
+        CacheInitialPosition(characterText1);
+        CacheInitialPosition(characterText2);
+        CacheInitialPosition(namePositionText1 != null ? namePositionText1.transform : null);
+        CacheInitialPosition(namePositionText2 != null ? namePositionText2.transform : null);
+        CacheInitialPosition(character1ZAxisScrollbar);
+        CacheInitialPosition(character2ZAxisScrollbar);
+    }
+
+    private void CacheInitialPositions(List<GameObject> targets)
+    {
+        if (targets == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            GameObject target = targets[i];
+            if (target == null)
+            {
+                continue;
+            }
+
+            CacheInitialPosition(target.transform);
+        }
+    }
+
+    private void CacheInitialPosition(Component target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        CacheInitialPosition(target.transform);
+    }
+
+    private void CacheInitialPosition(Transform target)
+    {
+        if (target == null || uiInitialPositions.ContainsKey(target))
+        {
+            return;
+        }
+
+        uiInitialPositions.Add(target, target.position);
+    }
+
+    private void RestoreInitialPositions(List<GameObject> targets)
+    {
+        if (targets == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            GameObject target = targets[i];
+            if (target == null)
+            {
+                continue;
+            }
+
+            RestoreInitialPosition(target.transform);
+        }
+    }
+
+    private void RestoreInitialPosition(Component target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        RestoreInitialPosition(target.transform);
+    }
+
+    private void RestoreInitialPosition(Transform target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        Vector3 cachedPosition;
+        if (uiInitialPositions.TryGetValue(target, out cachedPosition))
+        {
+            target.position = cachedPosition;
+        }
+    }
+
+    private void BindCharacterUiFollow(int sceneNumber)
+    {
+        character1Follow.Clear();
+        character2Follow.Clear();
+
+        RestoreInitialPositions(character1UiObjects);
+        RestoreInitialPositions(character2UiObjects);
+        RestoreInitialPosition(rotateCharacter1Button);
+        RestoreInitialPosition(rotateCharacter2Button);
+        RestoreInitialPosition(characterText1);
+        RestoreInitialPosition(characterText2);
+        RestoreInitialPosition(namePositionText1 != null ? namePositionText1.transform : null);
+        RestoreInitialPosition(namePositionText2 != null ? namePositionText2.transform : null);
+        RestoreInitialPosition(character1ZAxisScrollbar);
+        RestoreInitialPosition(character2ZAxisScrollbar);
+
+        int copyIndex = sceneNumber - 1;
+        Transform character1Target = characterSetup != null ? characterSetup.GetCopyTransform(copyIndex, 1) : null;
+        Transform character2Target = characterSetup != null ? characterSetup.GetCopyTransform(copyIndex, 2) : null;
+
+        Transform namePosition1Transform = namePositionText1 != null ? namePositionText1.transform : null;
+        Transform namePosition2Transform = namePositionText2 != null ? namePositionText2.transform : null;
+
+        BuildFollowEntries(character1Target, character1UiObjects, character1Follow, rotateCharacter1Button, characterText1, namePosition1Transform, character1ZAxisScrollbar);
+        BuildFollowEntries(character2Target, character2UiObjects, character2Follow, rotateCharacter2Button, characterText2, namePosition2Transform, character2ZAxisScrollbar);
+    }
+
+    private void BuildFollowEntries(
+        Transform target,
+        List<GameObject> uiObjects,
+        List<UiFollowEntry> entries,
+        params Component[] extra)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        HashSet<Transform> visited = new HashSet<Transform>();
+
+        if (uiObjects != null)
+        {
+            for (int i = 0; i < uiObjects.Count; i++)
+            {
+                GameObject obj = uiObjects[i];
+                if (obj == null)
+                {
+                    continue;
+                }
+
+                TryAddFollowEntry(target, obj.transform, entries, visited);
+            }
+        }
+
+        if (extra != null)
+        {
+            for (int i = 0; i < extra.Length; i++)
+            {
+                Component component = extra[i];
+                if (component == null)
+                {
+                    continue;
+                }
+
+                TryAddFollowEntry(target, component.transform, entries, visited);
+            }
+        }
+    }
+
+    private void TryAddFollowEntry(
+        Transform target,
+        Transform uiTransform,
+        List<UiFollowEntry> entries,
+        HashSet<Transform> visited)
+    {
+        if (uiTransform == null || !visited.Add(uiTransform))
+        {
+            return;
+        }
+
+        Camera camera = ResolveUiCamera();
+        bool screenSpace = useScreenSpaceUi && camera != null;
+        Vector3 targetUiPosition = GetTargetUiPosition(target, uiTransform, camera, screenSpace);
+
+        UiFollowEntry entry = new UiFollowEntry
+        {
+            target = target,
+            uiTransform = uiTransform,
+            offset = uiTransform.position - targetUiPosition,
+            useScreenSpace = screenSpace,
+            camera = camera
+        };
+
+        entries.Add(entry);
+    }
+
+    private static void UpdateFollowList(List<UiFollowEntry> entries)
+    {
+        if (entries == null || entries.Count == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            UiFollowEntry entry = entries[i];
+            if (entry.target == null || entry.uiTransform == null)
+            {
+                continue;
+            }
+
+            Vector3 targetPosition = entry.useScreenSpace && entry.camera != null
+                ? entry.camera.WorldToScreenPoint(entry.target.position)
+                : entry.target.position;
+
+            targetPosition.z = entry.uiTransform.position.z;
+            entry.uiTransform.position = targetPosition + entry.offset;
+        }
+    }
+
+    private Camera ResolveUiCamera()
+    {
+        if (uiFollowCamera != null)
+        {
+            return uiFollowCamera;
+        }
+
+        return Camera.main;
+    }
+
+    private static Vector3 GetTargetUiPosition(Transform target, Transform uiTransform, Camera camera, bool screenSpace)
+    {
+        if (!screenSpace || camera == null)
+        {
+            return target.position;
+        }
+
+        Vector3 screenPoint = camera.WorldToScreenPoint(target.position);
+        screenPoint.z = uiTransform.position.z;
+        return screenPoint;
     }
 
     private void ToggleCurrentSceneCharacterRotation(int characterNumber)

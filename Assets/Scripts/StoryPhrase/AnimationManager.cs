@@ -164,6 +164,8 @@ public class AnimationManager : MonoBehaviour
 
             button.onClick.AddListener(() => TriggerAnimationForCurrentScene(triggerName, character1, panel));
         }
+
+        CenterGridLayout(panel, animationTriggers.Length);
     }
 
     private void TriggerAnimationForCurrentScene(string triggerName, bool character1, Transform panel)
@@ -223,6 +225,7 @@ public class AnimationManager : MonoBehaviour
         grid.spacing = buttonSpacing;
         grid.startAxis = GridLayoutGroup.Axis.Vertical;
         grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        grid.childAlignment = TextAnchor.UpperLeft;
 
         if (buttonPrefab != null)
         {
@@ -243,6 +246,47 @@ public class AnimationManager : MonoBehaviour
         }
     }
 
+    private void CenterGridLayout(Transform panel, int buttonCount)
+    {
+        if (panel == null || buttonCount <= 0)
+        {
+            return;
+        }
+
+        RectTransform panelRect = panel as RectTransform;
+        GridLayoutGroup grid = panel.GetComponent<GridLayoutGroup>();
+        if (panelRect == null || grid == null)
+        {
+            return;
+        }
+
+        float width = panelRect.rect.width;
+        float height = panelRect.rect.height;
+        if (width <= 0f || height <= 0f)
+        {
+            return;
+        }
+
+        Vector2 cellSize = grid.cellSize;
+        Vector2 spacing = grid.spacing;
+
+        int maxColumns = Mathf.Max(1, Mathf.FloorToInt((width + spacing.x) / (cellSize.x + spacing.x)));
+        int columns = Mathf.Clamp(maxColumns, 1, buttonCount);
+        int rows = Mathf.CeilToInt(buttonCount / (float)columns);
+
+        float contentWidth = columns * cellSize.x + Mathf.Max(0, columns - 1) * spacing.x;
+        float contentHeight = rows * cellSize.y + Mathf.Max(0, rows - 1) * spacing.y;
+
+        int paddingX = Mathf.Max(0, Mathf.FloorToInt((width - contentWidth) * 0.5f));
+        int paddingY = Mathf.Max(0, Mathf.FloorToInt((height - contentHeight) * 0.5f));
+
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = columns;
+        grid.padding = new RectOffset(paddingX, paddingX, paddingY, paddingY);
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
+    }
+
     public void ShowCharacter1Panel()
     {
         SetPanelActive(chooseAnimationsCharacter1, true);
@@ -255,10 +299,27 @@ public class AnimationManager : MonoBehaviour
 
     private static void SetPanelActive(Transform panel, bool active)
     {
-        if (panel != null)
+        if (panel == null)
         {
-            panel.gameObject.SetActive(active);
+            return;
         }
+
+        UiPanelTransition transition = panel.GetComponent<UiPanelTransition>();
+        if (transition != null)
+        {
+            if (active)
+            {
+                transition.TransitionIn();
+            }
+            else
+            {
+                transition.TransitionOut();
+            }
+
+            return;
+        }
+
+        panel.gameObject.SetActive(active);
     }
 
     private void EnsureTriggerStorageSize()

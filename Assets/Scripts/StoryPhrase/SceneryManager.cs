@@ -30,6 +30,7 @@ public class SceneryManager : MonoBehaviour
     [SerializeField] private Button nextButton;
     [SerializeField] private Button continueButton;
     [SerializeField] private GameObject SB_Panel;
+    [SerializeField] private UiPanelTransition SB_PanelTransition;
 
     [Header("Dependencies")]
     [SerializeField] private PhraseManager phraseManager;
@@ -226,9 +227,9 @@ public class SceneryManager : MonoBehaviour
             SetSceneryText(BuildCompletedText());
             SetAllSceneryObjectsActive(false);
 
-            if (SB_Panel != null)
+            if (SB_Panel != null && SB_PanelTransition != null)
             {
-                SB_Panel.SetActive(true);
+                SB_PanelTransition.TransitionIn();
             }
             return;
         }
