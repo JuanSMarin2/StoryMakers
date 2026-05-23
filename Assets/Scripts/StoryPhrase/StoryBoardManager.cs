@@ -502,11 +502,39 @@ public class StoryBoardManager : MonoBehaviour
 
         Vector3 offsetDir1 = Vector3.left;
         Vector3 offsetDir2 = Vector3.right;
-        if (hasCharacter1 && hasCharacter2)
+
+        Vector3 facingDir1 = Vector3.zero;
+        Vector3 facingDir2 = Vector3.zero;
+        bool hasFacingDir1 = hasCharacter1 && TryGetFacingHorizontalOffsetDirection(character1.transform, out facingDir1);
+        bool hasFacingDir2 = hasCharacter2 && TryGetFacingHorizontalOffsetDirection(character2.transform, out facingDir2);
+
+        if (hasFacingDir1)
+        {
+            offsetDir1 = facingDir1;
+        }
+
+        if (hasFacingDir2)
+        {
+            offsetDir2 = facingDir2;
+        }
+
+        // Fallback: if a character is facing front/back (no clear left/right), keep the previous logic
+        // that offsets based on which character is on the left/right.
+        if (hasCharacter1 && hasCharacter2 && (!hasFacingDir1 || !hasFacingDir2))
         {
             bool character1IsLeft = finalPosition1.x <= finalPosition2.x;
-            offsetDir1 = character1IsLeft ? Vector3.left : Vector3.right;
-            offsetDir2 = character1IsLeft ? Vector3.right : Vector3.left;
+            Vector3 compareDir1 = character1IsLeft ? Vector3.left : Vector3.right;
+            Vector3 compareDir2 = character1IsLeft ? Vector3.right : Vector3.left;
+
+            if (!hasFacingDir1)
+            {
+                offsetDir1 = compareDir1;
+            }
+
+            if (!hasFacingDir2)
+            {
+                offsetDir2 = compareDir2;
+            }
         }
 
         if (hasCharacter1)
@@ -581,6 +609,37 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         target.position = finalPosition;
+    }
+
+    private static bool TryGetFacingHorizontalOffsetDirection(Transform target, out Vector3 direction)
+    {
+        direction = Vector3.zero;
+
+        if (target == null)
+        {
+            return false;
+        }
+
+        // Determine if the character is clearly facing left/right in world space.
+        // If they face mostly forward/backward, we return false so caller can use the legacy comparison logic.
+        Vector3 forward = target.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.0001f)
+        {
+            return false;
+        }
+
+        forward.Normalize();
+        float dotX = Vector3.Dot(forward, Vector3.right);
+
+        const float horizontalFacingThreshold = 0.7f; // ~45 degrees
+        if (Mathf.Abs(dotX) < horizontalFacingThreshold)
+        {
+            return false;
+        }
+
+        direction = dotX >= 0f ? Vector3.right : Vector3.left;
+        return true;
     }
 
     private void SetupResultsScene(int sceneNumber, bool activateCamera)
