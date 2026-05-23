@@ -17,10 +17,6 @@ public class CharacterSetup : MonoBehaviour
     [SerializeField] private int copiesPerCharacter = 6;
 
     [Header("Z Position Stabilization")]
-    [SerializeField] private bool snapToGroundOnZMove = true;
-    [SerializeField] private LayerMask groundMask = 1 << 0;
-    [SerializeField] private float groundRaycastHeight = 2f;
-    [SerializeField] private float groundOffset = 0f;
     [SerializeField] private bool freezeRigidbodyOnZMove = true;
 
     [Header("Character 1")]
@@ -35,6 +31,46 @@ public class CharacterSetup : MonoBehaviour
     private readonly List<GameObject> character2Copies = new List<GameObject>();
     private readonly List<int> character1RotationState = new List<int>();
     private readonly List<int> character2RotationState = new List<int>();
+
+    private readonly Dictionary<Rigidbody, Vector3> pendingRigidbodyMoves = new Dictionary<Rigidbody, Vector3>();
+
+    private void FixedUpdate()
+    {
+        if (pendingRigidbodyMoves.Count == 0)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<Rigidbody, Vector3> pending in pendingRigidbodyMoves)
+        {
+            Rigidbody rb = pending.Key;
+            if (rb == null)
+            {
+                continue;
+            }
+
+            if (freezeRigidbodyOnZMove)
+            {
+#if UNITY_6000_0_OR_NEWER
+                rb.linearVelocity = Vector3.zero;
+#else
+                rb.velocity = Vector3.zero;
+#endif
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            if (rb.isKinematic)
+            {
+                rb.position = pending.Value;
+            }
+            else
+            {
+                rb.MovePosition(pending.Value);
+            }
+        }
+
+        pendingRigidbodyMoves.Clear();
+    }
 
     public void GenerateCopies(int characterNumber, GameObject sourceRoot)
     {
@@ -177,29 +213,26 @@ public class CharacterSetup : MonoBehaviour
         Vector3 position = copy.transform.position;
         position.z = zPosition;
 
-        if (snapToGroundOnZMove)
-        {
-            position.y = ResolveGroundY(position, copy.transform);
-        }
-
         Rigidbody rb = copy.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            if (freezeRigidbodyOnZMove)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
-
             if (rb.isKinematic)
             {
+                if (freezeRigidbodyOnZMove)
+                {
+#if UNITY_6000_0_OR_NEWER
+                    rb.linearVelocity = Vector3.zero;
+#else
+                    rb.velocity = Vector3.zero;
+#endif
+                    rb.angularVelocity = Vector3.zero;
+                }
+
                 rb.position = position;
-            }
-            else
-            {
-                rb.MovePosition(position);
+                return;
             }
 
+            pendingRigidbodyMoves[rb] = position;
             return;
         }
 
@@ -217,41 +250,6 @@ public class CharacterSetup : MonoBehaviour
         SetCollidersEnabled(copy, enabled);
     }
 
-    private float ResolveGroundY(Vector3 position, Transform root)
-    {
-        Vector3 origin = position + Vector3.up * Mathf.Max(0.01f, groundRaycastHeight);
-        float maxDistance = groundRaycastHeight * 2f + 0.1f;
-        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, maxDistance, groundMask, QueryTriggerInteraction.Ignore);
-        if (hits == null || hits.Length == 0)
-        {
-            return position.y;
-        }
-
-        float bestY = float.NegativeInfinity;
-        bool found = false;
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            RaycastHit hit = hits[i];
-            if (hit.collider == null)
-            {
-                continue;
-            }
-
-            if (root != null && hit.collider.transform.IsChildOf(root))
-            {
-                continue;
-            }
-
-            if (hit.point.y > bestY)
-            {
-                bestY = hit.point.y;
-                found = true;
-            }
-        }
-
-        return found ? bestY + groundOffset : position.y;
-    }
 
     public Transform GetCopyTransform(int copyIndex, int characterNumber)
     {

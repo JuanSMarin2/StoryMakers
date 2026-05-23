@@ -47,6 +47,9 @@ public class StoryBoardManager : MonoBehaviour
     [SerializeField] private Scrollbar character1ZAxisScrollbar;
     [SerializeField] private Scrollbar character2ZAxisScrollbar;
 
+    private PointerHoldTracker character1ZHoldTracker;
+    private PointerHoldTracker character2ZHoldTracker;
+
     [Header("Results Sequence")]
     [SerializeField] private GameObject resultsTextSpace;
     [SerializeField] private GameObject ResultsPanel;
@@ -135,6 +138,8 @@ public class StoryBoardManager : MonoBehaviour
         {
             character2ZAxisScrollbar.onValueChanged.AddListener(OnCharacter2ZAxisChanged);
         }
+
+        HookScrollbarHoldTrackers();
         EnsureReferencesByName();
         SetAllStoryBoardSceneryInactive();
         SetAllCamerasActive(false);
@@ -180,6 +185,8 @@ public class StoryBoardManager : MonoBehaviour
             character2ZAxisScrollbar.onValueChanged.RemoveListener(OnCharacter2ZAxisChanged);
         }
 
+        UnhookScrollbarHoldTrackers();
+
         CleanupCapturedPhotos();
     }
 
@@ -215,8 +222,60 @@ public class StoryBoardManager : MonoBehaviour
             return;
         }
 
-        UpdateFollowList(character1Follow);
-        UpdateFollowList(character2Follow);
+        UpdateFollowList(character1Follow, character1ZHoldTracker);
+        UpdateFollowList(character2Follow, character2ZHoldTracker);
+    }
+
+    private void HookScrollbarHoldTrackers()
+    {
+        HookScrollbarHoldTracker(character1ZAxisScrollbar, ref character1ZHoldTracker, OnCharacter1ScrollbarHoldChanged);
+        HookScrollbarHoldTracker(character2ZAxisScrollbar, ref character2ZHoldTracker, OnCharacter2ScrollbarHoldChanged);
+    }
+
+    private void UnhookScrollbarHoldTrackers()
+    {
+        if (character1ZHoldTracker != null)
+        {
+            character1ZHoldTracker.HoldChanged -= OnCharacter1ScrollbarHoldChanged;
+        }
+
+        if (character2ZHoldTracker != null)
+        {
+            character2ZHoldTracker.HoldChanged -= OnCharacter2ScrollbarHoldChanged;
+        }
+    }
+
+    private static void HookScrollbarHoldTracker(Scrollbar scrollbar, ref PointerHoldTracker tracker, System.Action<bool> onChanged)
+    {
+        if (scrollbar == null)
+        {
+            return;
+        }
+
+        tracker = scrollbar.GetComponent<PointerHoldTracker>();
+        if (tracker == null)
+        {
+            tracker = scrollbar.gameObject.AddComponent<PointerHoldTracker>();
+        }
+
+        tracker.HoldChanged -= onChanged;
+        tracker.HoldChanged += onChanged;
+    }
+
+    private void OnCharacter1ScrollbarHoldChanged(bool held)
+    {
+        if (!held)
+        {
+            UpdateFollowList(character1Follow, character1ZHoldTracker);
+        }
+    }
+
+    private void OnCharacter2ScrollbarHoldChanged(bool held)
+    {
+        if (!held)
+        {
+            UpdateFollowList(character2Follow, character2ZHoldTracker);
+        }
     }
 
     private void OnContinuePressed()
@@ -1126,7 +1185,7 @@ public class StoryBoardManager : MonoBehaviour
         entries.Add(entry);
     }
 
-    private static void UpdateFollowList(List<UiFollowEntry> entries)
+    private static void UpdateFollowList(List<UiFollowEntry> entries, PointerHoldTracker holdTracker)
     {
         if (entries == null || entries.Count == 0)
         {
@@ -1137,6 +1196,11 @@ public class StoryBoardManager : MonoBehaviour
         {
             UiFollowEntry entry = entries[i];
             if (entry.target == null || entry.uiTransform == null)
+            {
+                continue;
+            }
+
+            if (holdTracker != null && holdTracker.IsHeld && entry.uiTransform == holdTracker.transform)
             {
                 continue;
             }

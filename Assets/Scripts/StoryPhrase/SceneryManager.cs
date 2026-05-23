@@ -324,7 +324,7 @@ public class SceneryManager : MonoBehaviour
             return true;
         }
 
-        message = string.Format("Escenario incorrecto. Debe representar: {0}.", FormatPlaceOption(expectedPlace));
+        message = string.Format("Escenario incorrecto. Debe representar a {0}.", FormatPlaceOption(expectedPlace));
         return false;
     }
 

@@ -709,6 +709,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Transition Canvas
       objectReference: {fileID: 0}
+    - target: {fileID: 3566340123303123229, guid: 293f69c520451974e9d056bb37c1c1e1, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3631523625682587042, guid: 293f69c520451974e9d056bb37c1c1e1, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -897,14 +901,14 @@ RectTransform:
   m_GameObject: {fileID: 1292744624}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 2.5600002, y: 2.5600002, z: 2.5600002}
+  m_LocalScale: {x: 3.52, y: 3.52, z: 3.52}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 1840927613}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 719.36005, y: 431.36}
+  m_AnchoredPosition: {x: 1015, y: 507}
   m_SizeDelta: {x: 40, y: 43}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1292744626
@@ -953,7 +957,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2107613914}
         m_TargetAssemblyTypeName: MainMenuManager, Assembly-CSharp
-        m_MethodName: StartGame
+        m_MethodName: QuitGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1504,7 +1508,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.00001464832, y: -258.56}
+  m_AnchoredPosition: {x: 0.00001464832, y: -299}
   m_SizeDelta: {x: 138.1358, y: 43}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1803243178

@@ -21,6 +21,10 @@ public class CharacterDraggable : MonoBehaviour
     private int activeFingerId = -1;
     private float lastDragLogTime;
 
+    private Rigidbody cachedRigidbody;
+    private bool hasPendingRigidbodyMove;
+    private Vector3 pendingRigidbodyPosition;
+
     public bool IsDraggable
     {
         get { return isDraggable; }
@@ -53,6 +57,7 @@ public class CharacterDraggable : MonoBehaviour
     private void Awake()
     {
         cachedCamera = Camera.main;
+        cachedRigidbody = GetComponent<Rigidbody>();
     }
 
     private void OnEnable()
@@ -78,6 +83,32 @@ public class CharacterDraggable : MonoBehaviour
         }
 
         HandleMouseDrag();
+    }
+
+    private void FixedUpdate()
+    {
+        if (!hasPendingRigidbodyMove || cachedRigidbody == null)
+        {
+            return;
+        }
+
+        if (cachedRigidbody.isKinematic)
+        {
+            cachedRigidbody.position = pendingRigidbodyPosition;
+        }
+        else
+        {
+            cachedRigidbody.MovePosition(pendingRigidbodyPosition);
+        }
+
+#if UNITY_6000_0_OR_NEWER
+        cachedRigidbody.linearVelocity = Vector3.zero;
+#else
+        cachedRigidbody.velocity = Vector3.zero;
+#endif
+        cachedRigidbody.angularVelocity = Vector3.zero;
+
+        hasPendingRigidbodyMove = false;
     }
 
     private void HandleMouseDrag()
@@ -225,7 +256,16 @@ public class CharacterDraggable : MonoBehaviour
         }
 
         target.z = current.z;
-        transform.position = target;
+
+        if (cachedRigidbody != null)
+        {
+            pendingRigidbodyPosition = target;
+            hasPendingRigidbodyMove = true;
+        }
+        else
+        {
+            transform.position = target;
+        }
 
         if (Time.unscaledTime - lastDragLogTime >= 0.15f)
         {
@@ -270,6 +310,7 @@ public class CharacterDraggable : MonoBehaviour
 
         isDragging = false;
         activeFingerId = -1;
+        hasPendingRigidbodyMove = false;
     }
 
     private void LogDebug(string message)
