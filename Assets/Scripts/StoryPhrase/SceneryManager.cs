@@ -25,6 +25,9 @@ public class SceneryManager : MonoBehaviour
     [SerializeField] private List<SceneryOption> sceneryOptions = new List<SceneryOption>();
     [SerializeField] private bool debugSceneryIndex = true;
 
+    [Header("Skin Phase")]
+    [SerializeField] private List<GameObject> skinPhaseObjects = new List<GameObject>();
+
     [Header("Controls")]
     [SerializeField] private Button previousButton;
     [SerializeField] private Button nextButton;
@@ -95,6 +98,7 @@ public class SceneryManager : MonoBehaviour
         selectedSceneryIndex[0] = -1;
         selectedSceneryIndex[1] = -1;
         currentOptionIndex = 0;
+        SetSkinPhaseObjectsActive(false);
 
         // Stage starts with only index 0 active.
         EnterStage(FlowStage.Scene1Selection);
@@ -477,6 +481,23 @@ public class SceneryManager : MonoBehaviour
             if (targetObject != null)
             {
                 targetObject.SetActive(active);
+            }
+        }
+    }
+
+    private void SetSkinPhaseObjectsActive(bool active)
+    {
+        if (skinPhaseObjects == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < skinPhaseObjects.Count; i++)
+        {
+            GameObject skinPhaseObject = skinPhaseObjects[i];
+            if (skinPhaseObject != null)
+            {
+                skinPhaseObject.SetActive(active);
             }
         }
     }

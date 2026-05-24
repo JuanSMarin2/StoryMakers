@@ -12,6 +12,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: AnimButton Variant
       objectReference: {fileID: 0}
+    - target: {fileID: 2071529356082573405, guid: cf466454266b4b74ab59fcfe0e6c22b0, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 1.9000015
+      objectReference: {fileID: 0}
     - target: {fileID: 3949587437118149829, guid: cf466454266b4b74ab59fcfe0e6c22b0, type: 3}
       propertyPath: m_fontSize
       value: 29.83
