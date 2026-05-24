@@ -7,12 +7,21 @@ public class TransitionAnimationPanel : MonoBehaviour
     [Header("Rotator")]
     [SerializeField] private GameObject rotatorGO;
     [SerializeField] private Vector3 rotateToEuler = new Vector3(0f, 180f, 0f);
-    [SerializeField] private float rotateDuration = 0.35f;
-    [SerializeField] private Ease rotateEase = Ease.OutCubic;
+    [Header("Rotate - Subir (to)")]
+    [SerializeField] private float rotateToDuration = 0.35f;
+    [SerializeField] private Ease rotateToEase = Ease.OutCubic;
+    [Header("Rotate - Bajar (back)")]
+    [SerializeField] private float rotateBackDuration = 0.35f;
+    [SerializeField] private Ease rotateBackEase = Ease.InCubic;
 
     [Header("Panel")]
     [SerializeField] private UiPanelTransition uiPanelTransition;
-    [SerializeField] private float delayBeforeFadeOut = 0.5f;
+    [SerializeField] private float delayBeforeDescend = 0.1f;
+    [SerializeField] private float delayBeforeFadeOut = 0.1f;
+
+    [Header("Audio")]
+    [SerializeField] private AudioClip clipSound;
+    [SerializeField] private AudioSource audioSource;
 
     private Tween activeTween;
 
@@ -31,8 +40,24 @@ public class TransitionAnimationPanel : MonoBehaviour
         KillActiveTween();
 
         Sequence seq = DOTween.Sequence();
-        seq.Append(rt.DOLocalRotate(rotateToEuler, rotateDuration).SetEase(rotateEase));
-        seq.Append(rt.DOLocalRotate(originalEuler, rotateDuration).SetEase(rotateEase));
+        seq.Append(rt.DOLocalRotate(rotateToEuler, rotateToDuration).SetEase(rotateToEase));
+        seq.AppendInterval(delayBeforeDescend);
+        seq.AppendCallback(() =>
+        {
+            if (clipSound != null)
+            {
+                if (audioSource != null)
+                {
+                    audioSource.PlayOneShot(clipSound);
+                }
+                else
+                {
+                    Vector3 pos = (Camera.main != null) ? Camera.main.transform.position : transform.position;
+                    AudioSource.PlayClipAtPoint(clipSound, pos);
+                }
+            }
+        });
+        seq.Append(rt.DOLocalRotate(originalEuler, rotateBackDuration).SetEase(rotateBackEase));
         seq.OnComplete(() => StartCoroutine(DelayedFadeOut()));
 
         activeTween = seq;
