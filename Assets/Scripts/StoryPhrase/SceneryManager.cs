@@ -485,6 +485,11 @@ public class SceneryManager : MonoBehaviour
         }
     }
 
+    public void SetSceneryOptionsActive(bool active)
+    {
+        SetAllSceneryObjectsActive(active);
+    }
+
     private void SetSkinPhaseObjectsActive(bool active)
     {
         if (skinPhaseObjects == null)

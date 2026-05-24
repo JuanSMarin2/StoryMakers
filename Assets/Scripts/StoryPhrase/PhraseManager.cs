@@ -606,7 +606,7 @@ public class PhraseManager : MonoBehaviour
                 name = "Escena 5",
                 template = "Tiempo después, {C2_T1} estaba _ en {L2}, cuando se reencuentra con {C1_T1}.",
                 slots = new List<WordType> { WordType.Accion },
-                acciones = new List<string> { "bailando", "meditando", "cantando", "hablando", "saltando" }
+                acciones = new List<string> { "bailando", "cantando", "hablando", "saltando" }
             },
             new SceneDefinition
             {

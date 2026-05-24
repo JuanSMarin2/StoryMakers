@@ -247,6 +247,11 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         CaptureSceneryIndexes();
+        if (sceneryManager != null)
+        {
+            sceneryManager.SetSceneryOptionsActive(false);
+        }
+
         DisableSceneryStageUI();
         ClearCapturedData();
         SetResultsPanelsActive(false);
@@ -826,7 +831,7 @@ public class StoryBoardManager : MonoBehaviour
         Animator animator = animationManager != null ? animationManager.GetAnimatorAt(sceneIndex, character1) : null;
         if (animator != null)
         {
-            animator.SetTrigger("Neutro");
+            animator.SetTrigger("Neutral");
         }
 
         target.position = finalPosition + offsetDirection * resultsSpawnOffset;
