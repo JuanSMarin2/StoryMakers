@@ -2760,7 +2760,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 86f66e163c133a144ab027f2c6dd8a86, type: 3}
       propertyPath: m_Name
-      value: Salon_de_clases
+      value: Objetos
       objectReference: {fileID: 0}
     - target: {fileID: 2019344943211262321, guid: 86f66e163c133a144ab027f2c6dd8a86, type: 3}
       propertyPath: m_LocalPosition.x
