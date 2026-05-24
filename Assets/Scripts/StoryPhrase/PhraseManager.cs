@@ -52,7 +52,8 @@ public class PhraseManager : MonoBehaviour
     [SerializeField] private float textVerticalOffset = 0f;
     [SerializeField] private float slotVerticalOffset = 0f;
     [SerializeField] private float rightPadding = 16f;
-    [SerializeField] private float horizontalSpacing = 8f;
+    [SerializeField] private float horizontalSpacing = 0f;
+    [SerializeField] private float postSlotSpacing = 4f;
     [SerializeField] private float minLineBreakStep = 70f;
     [SerializeField] private float lineSpacing = 8f;
     [SerializeField] private bool forceSingleLineLayout = true;
@@ -148,6 +149,10 @@ public class PhraseManager : MonoBehaviour
         for (int i = 0; i < parsedSegments.Length; i++)
         {
             string segment = parsedSegments[i];
+            if (i > 0)
+            {
+                segment = segment.TrimStart();
+            }
             if (!string.IsNullOrEmpty(segment))
             {
                 TMP_Text textBlock = Instantiate(textBlockPrefab, phraseContainer);
@@ -421,6 +426,7 @@ public class PhraseManager : MonoBehaviour
         float cursorY = -startOffsetY;
         float currentLineHeight = 0f;
         bool hasItemsInLine = false;
+        bool previousWasSlot = false;
 
         for (int i = 0; i < containerRect.childCount; i++)
         {
@@ -444,13 +450,20 @@ public class PhraseManager : MonoBehaviour
             }
 
             float extraOffsetY = 0f;
-            if (child.GetComponent<TMP_Text>() != null)
+            bool isText = child.GetComponent<TMP_Text>() != null;
+            bool isSlot = !isText && child.GetComponent<WordSlot>() != null;
+            if (isText)
             {
                 extraOffsetY = textVerticalOffset;
             }
-            else if (child.GetComponent<WordSlot>() != null)
+            else if (isSlot)
             {
                 extraOffsetY = slotVerticalOffset;
+            }
+
+            if (previousWasSlot && isText)
+            {
+                cursorX += Mathf.Max(0f, postSlotSpacing);
             }
 
             child.anchorMin = new Vector2(0f, 1f);
@@ -461,6 +474,7 @@ public class PhraseManager : MonoBehaviour
             cursorX += width + horizontalSpacing;
             currentLineHeight = Mathf.Max(currentLineHeight, height);
             hasItemsInLine = true;
+            previousWasSlot = isSlot;
         }
     }
 
@@ -471,19 +485,23 @@ public class PhraseManager : MonoBehaviour
             return 0f;
         }
 
+        WordSlot slot = child.GetComponent<WordSlot>();
+        if (slot != null)
+        {
+            float slotWidth = slot.GetVisualWidth();
+            if (slotWidth > 0f)
+            {
+                return slotWidth;
+            }
+        }
+
         float width = LayoutUtility.GetPreferredWidth(child);
-        if (width <= 0f)
+        if (width > 0f)
         {
-            width = child.rect.width;
+            return width;
         }
 
-        TMP_Text tmp = child.GetComponent<TMP_Text>();
-        if (tmp != null)
-        {
-            width = Mathf.Max(width, tmp.preferredWidth);
-        }
-
-        return Mathf.Max(1f, width);
+        return Mathf.Max(1f, child.rect.width);
     }
 
     private static float GetSafePreferredHeight(RectTransform child)
@@ -525,24 +543,14 @@ public class PhraseManager : MonoBehaviour
             return;
         }
 
-        int safeStep = Mathf.Max(1, widthStepCharacters);
-        int charCount = string.IsNullOrEmpty(content) ? 0 : content.Length;
-        int steps = Mathf.Max(1, Mathf.CeilToInt((float)charCount / safeStep));
-
-        float baseWidth = rect.rect.width;
-        if (baseWidth <= 0f)
-        {
-            baseWidth = textBlock.preferredWidth;
-        }
-
-        float expandedWidth = Mathf.Max(textBlock.preferredWidth, baseWidth * steps);
-        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, expandedWidth);
+        float targetWidth = textBlock.preferredWidth;
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetWidth);
 
         LayoutElement layoutElement = textBlock.GetComponent<LayoutElement>();
         if (layoutElement != null)
         {
-            layoutElement.preferredWidth = expandedWidth;
-            layoutElement.minWidth = expandedWidth;
+            layoutElement.preferredWidth = targetWidth;
+            layoutElement.minWidth = targetWidth;
         }
     }
 

@@ -46,6 +46,12 @@ public class StoryBoardManager : MonoBehaviour
     [Header("Z-Axis Controls")]
     [SerializeField] private Scrollbar character1ZAxisScrollbar;
     [SerializeField] private Scrollbar character2ZAxisScrollbar;
+    [SerializeField] private Button character1ZAxisPlusButton;
+    [SerializeField] private Button character1ZAxisMinusButton;
+    [SerializeField] private Button character2ZAxisPlusButton;
+    [SerializeField] private Button character2ZAxisMinusButton;
+    [SerializeField] private float zAxisMaxOffset = 8f;
+    [SerializeField] private float zAxisStep = 0.5f;
 
     private PointerHoldTracker character1ZHoldTracker;
     private PointerHoldTracker character2ZHoldTracker;
@@ -101,6 +107,8 @@ public class StoryBoardManager : MonoBehaviour
     private readonly List<UiFollowEntry> character1Follow = new List<UiFollowEntry>();
     private readonly List<UiFollowEntry> character2Follow = new List<UiFollowEntry>();
     private readonly Dictionary<Transform, Vector3> uiInitialPositions = new Dictionary<Transform, Vector3>();
+    private readonly float[] character1BaseZ = new float[TotalScenes];
+    private readonly float[] character2BaseZ = new float[TotalScenes];
 
     private void Awake()
     {
@@ -137,6 +145,26 @@ public class StoryBoardManager : MonoBehaviour
         if (character2ZAxisScrollbar != null)
         {
             character2ZAxisScrollbar.onValueChanged.AddListener(OnCharacter2ZAxisChanged);
+        }
+
+        if (character1ZAxisPlusButton != null)
+        {
+            character1ZAxisPlusButton.onClick.AddListener(OnCharacter1ZAxisPlusPressed);
+        }
+
+        if (character1ZAxisMinusButton != null)
+        {
+            character1ZAxisMinusButton.onClick.AddListener(OnCharacter1ZAxisMinusPressed);
+        }
+
+        if (character2ZAxisPlusButton != null)
+        {
+            character2ZAxisPlusButton.onClick.AddListener(OnCharacter2ZAxisPlusPressed);
+        }
+
+        if (character2ZAxisMinusButton != null)
+        {
+            character2ZAxisMinusButton.onClick.AddListener(OnCharacter2ZAxisMinusPressed);
         }
 
         HookScrollbarHoldTrackers();
@@ -183,6 +211,26 @@ public class StoryBoardManager : MonoBehaviour
         if (character2ZAxisScrollbar != null)
         {
             character2ZAxisScrollbar.onValueChanged.RemoveListener(OnCharacter2ZAxisChanged);
+        }
+
+        if (character1ZAxisPlusButton != null)
+        {
+            character1ZAxisPlusButton.onClick.RemoveListener(OnCharacter1ZAxisPlusPressed);
+        }
+
+        if (character1ZAxisMinusButton != null)
+        {
+            character1ZAxisMinusButton.onClick.RemoveListener(OnCharacter1ZAxisMinusPressed);
+        }
+
+        if (character2ZAxisPlusButton != null)
+        {
+            character2ZAxisPlusButton.onClick.RemoveListener(OnCharacter2ZAxisPlusPressed);
+        }
+
+        if (character2ZAxisMinusButton != null)
+        {
+            character2ZAxisMinusButton.onClick.RemoveListener(OnCharacter2ZAxisMinusPressed);
         }
 
         UnhookScrollbarHoldTrackers();
@@ -694,6 +742,26 @@ public class StoryBoardManager : MonoBehaviour
         {
             namePositionText2.gameObject.SetActive(character2Active);
         }
+
+        if (character1ZAxisPlusButton != null)
+        {
+            character1ZAxisPlusButton.gameObject.SetActive(character1Active);
+        }
+
+        if (character1ZAxisMinusButton != null)
+        {
+            character1ZAxisMinusButton.gameObject.SetActive(character1Active);
+        }
+
+        if (character2ZAxisPlusButton != null)
+        {
+            character2ZAxisPlusButton.gameObject.SetActive(character2Active);
+        }
+
+        if (character2ZAxisMinusButton != null)
+        {
+            character2ZAxisMinusButton.gameObject.SetActive(character2Active);
+        }
     }
 
     private void UpdateCharacterNameTexts()
@@ -1064,6 +1132,10 @@ public class StoryBoardManager : MonoBehaviour
         CacheInitialPosition(namePositionText2 != null ? namePositionText2.transform : null);
         CacheInitialPosition(character1ZAxisScrollbar);
         CacheInitialPosition(character2ZAxisScrollbar);
+        CacheInitialPosition(character1ZAxisPlusButton);
+        CacheInitialPosition(character1ZAxisMinusButton);
+        CacheInitialPosition(character2ZAxisPlusButton);
+        CacheInitialPosition(character2ZAxisMinusButton);
     }
 
     private void CacheInitialPositions(List<GameObject> targets)
@@ -1163,6 +1235,10 @@ public class StoryBoardManager : MonoBehaviour
         RestoreInitialPosition(namePositionText2 != null ? namePositionText2.transform : null);
         RestoreInitialPosition(character1ZAxisScrollbar);
         RestoreInitialPosition(character2ZAxisScrollbar);
+        RestoreInitialPosition(character1ZAxisPlusButton);
+        RestoreInitialPosition(character1ZAxisMinusButton);
+        RestoreInitialPosition(character2ZAxisPlusButton);
+        RestoreInitialPosition(character2ZAxisMinusButton);
 
         int copyIndex = sceneNumber - 1;
         Transform character1Target = characterSetup != null ? characterSetup.GetCopyTransform(copyIndex, 1) : null;
@@ -1171,8 +1247,10 @@ public class StoryBoardManager : MonoBehaviour
         Transform namePosition1Transform = namePositionText1 != null ? namePositionText1.transform : null;
         Transform namePosition2Transform = namePositionText2 != null ? namePositionText2.transform : null;
 
-        BuildFollowEntries(character1Target, character1UiObjects, character1Follow, rotateCharacter1Button, characterText1, namePosition1Transform, character1ZAxisScrollbar);
-        BuildFollowEntries(character2Target, character2UiObjects, character2Follow, rotateCharacter2Button, characterText2, namePosition2Transform, character2ZAxisScrollbar);
+        CacheBaseZForScene(sceneNumber, character1Target, character2Target);
+
+        BuildFollowEntries(character1Target, null, character1Follow, characterText1, namePosition1Transform);
+        BuildFollowEntries(character2Target, null, character2Follow, characterText2, namePosition2Transform);
     }
 
     private void BuildFollowEntries(
@@ -1314,7 +1392,7 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         int copyIndex = currentSceneNumber - 1;
-        float zPosition = Mathf.Lerp(0f, 8f, value);
+        float zPosition = GetCharacterBaseZ(copyIndex, 1) + Mathf.Clamp01(value) * Mathf.Max(0f, zAxisMaxOffset);
         characterSetup.SetCharacterZPosition(copyIndex, 1, zPosition);
     }
 
@@ -1326,8 +1404,64 @@ public class StoryBoardManager : MonoBehaviour
         }
 
         int copyIndex = currentSceneNumber - 1;
-        float zPosition = Mathf.Lerp(0f, 8f, value);
+        float zPosition = GetCharacterBaseZ(copyIndex, 2) + Mathf.Clamp01(value) * Mathf.Max(0f, zAxisMaxOffset);
         characterSetup.SetCharacterZPosition(copyIndex, 2, zPosition);
+    }
+
+    private void OnCharacter1ZAxisPlusPressed()
+    {
+        AdjustCharacterZAxis(1, zAxisStep);
+    }
+
+    private void OnCharacter1ZAxisMinusPressed()
+    {
+        AdjustCharacterZAxis(1, -zAxisStep);
+    }
+
+    private void OnCharacter2ZAxisPlusPressed()
+    {
+        AdjustCharacterZAxis(2, zAxisStep);
+    }
+
+    private void OnCharacter2ZAxisMinusPressed()
+    {
+        AdjustCharacterZAxis(2, -zAxisStep);
+    }
+
+    private void AdjustCharacterZAxis(int characterNumber, float delta)
+    {
+        if (!storyBoardStarted || characterSetup == null)
+        {
+            return;
+        }
+
+        int copyIndex = currentSceneNumber - 1;
+        Transform target = characterSetup.GetCopyTransform(copyIndex, characterNumber);
+        if (target == null)
+        {
+            return;
+        }
+
+        float baseZ = GetCharacterBaseZ(copyIndex, characterNumber);
+        float maxOffset = Mathf.Max(0f, zAxisMaxOffset);
+        float currentOffset = Mathf.Clamp(target.position.z - baseZ, 0f, maxOffset);
+        float nextOffset = Mathf.Clamp(currentOffset + delta, 0f, maxOffset);
+        float normalized = maxOffset > 0f ? nextOffset / maxOffset : 0f;
+
+        Scrollbar scrollbar = characterNumber == 1 ? character1ZAxisScrollbar : character2ZAxisScrollbar;
+        if (scrollbar != null)
+        {
+            scrollbar.SetValueWithoutNotify(normalized);
+        }
+
+        if (characterNumber == 1)
+        {
+            OnCharacter1ZAxisChanged(normalized);
+        }
+        else
+        {
+            OnCharacter2ZAxisChanged(normalized);
+        }
     }
 
     private void ResetZAxisScrollbars()
@@ -1343,6 +1477,35 @@ public class StoryBoardManager : MonoBehaviour
             character2ZAxisScrollbar.SetValueWithoutNotify(0f);
             OnCharacter2ZAxisChanged(0f);
         }
+    }
+
+    private void CacheBaseZForScene(int sceneNumber, Transform character1Target, Transform character2Target)
+    {
+        int sceneIndex = sceneNumber - 1;
+        if (sceneIndex < 0 || sceneIndex >= TotalScenes)
+        {
+            return;
+        }
+
+        if (character1Target != null)
+        {
+            character1BaseZ[sceneIndex] = character1Target.position.z;
+        }
+
+        if (character2Target != null)
+        {
+            character2BaseZ[sceneIndex] = character2Target.position.z;
+        }
+    }
+
+    private float GetCharacterBaseZ(int copyIndex, int characterNumber)
+    {
+        if (copyIndex < 0 || copyIndex >= TotalScenes)
+        {
+            return 0f;
+        }
+
+        return characterNumber == 1 ? character1BaseZ[copyIndex] : character2BaseZ[copyIndex];
     }
 
     private void DisableSceneryStageUI()

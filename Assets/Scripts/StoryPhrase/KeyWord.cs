@@ -67,8 +67,6 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
             label.ForceMeshUpdate();
         }
 
-        UpdateWidthToContent();
-
         if (background != null)
         {
             background.color = color;
@@ -78,16 +76,6 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
         originSiblingIndex = transform.GetSiblingIndex();
     }
 
-    public float GetPreferredWidth()
-    {
-        if (label == null)
-        {
-            return Mathf.Max(minWidth, rectTransform.rect.width);
-        }
-
-        float targetWidth = label.preferredWidth + horizontalTextPadding;
-        return Mathf.Max(minWidth, targetWidth);
-    }
 
     public void OnPointerDown(PointerEventData eventData)
     {
@@ -293,16 +281,6 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
         rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
     }
 
-    private void UpdateWidthToContent()
-    {
-        float width = GetPreferredWidth();
-        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
-
-        if (layoutElement != null)
-        {
-            layoutElement.preferredWidth = width;
-        }
-    }
 
     private void StopMoveAnimations()
     {

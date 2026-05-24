@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class KeyWordManager : MonoBehaviour
 {
@@ -20,6 +21,10 @@ public class KeyWordManager : MonoBehaviour
     [SerializeField] private Transform lugarContainer;
     [SerializeField] private Transform fallbackContainer;
     [SerializeField] private KeyWord keyWordPrefab;
+
+    [Header("Layout")]
+    [SerializeField] private int wordsPerRow = 5;
+    [SerializeField] private Vector2 wordSpacing = new Vector2(8f, 8f);
 
     [Header("Colors by Type")]
     [SerializeField] private Color sujetoColor = new Color(0.95f, 0.72f, 0.40f, 1f);
@@ -73,6 +78,11 @@ public class KeyWordManager : MonoBehaviour
         }
 
         ClearSpawnedWords();
+
+        ConfigureContainerLayout(sujetoContainer);
+        ConfigureContainerLayout(accionContainer);
+        ConfigureContainerLayout(lugarContainer);
+        ConfigureContainerLayout(fallbackContainer);
 
         foreach (KeyWordEntry entry in words)
         {
@@ -129,5 +139,41 @@ public class KeyWordManager : MonoBehaviour
         }
 
         spawnedWords.Clear();
+    }
+
+    private void ConfigureContainerLayout(Transform container)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        LayoutGroup existingLayout = container.GetComponent<LayoutGroup>();
+        if (existingLayout != null && !(existingLayout is GridLayoutGroup))
+        {
+            DestroyImmediate(existingLayout);
+        }
+
+        GridLayoutGroup grid = container.GetComponent<GridLayoutGroup>();
+        if (grid == null)
+        {
+            grid = container.gameObject.AddComponent<GridLayoutGroup>();
+        }
+
+        grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        grid.startAxis = GridLayoutGroup.Axis.Horizontal;
+        grid.childAlignment = TextAnchor.UpperLeft;
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = Mathf.Max(1, wordsPerRow);
+        grid.spacing = wordSpacing;
+
+        RectTransform prefabRect = keyWordPrefab != null ? keyWordPrefab.GetComponent<RectTransform>() : null;
+        Vector2 cellSize = prefabRect != null ? prefabRect.rect.size : Vector2.zero;
+        if (cellSize.x <= 0f || cellSize.y <= 0f)
+        {
+            cellSize = new Vector2(160f, 60f);
+        }
+
+        grid.cellSize = cellSize;
     }
 }

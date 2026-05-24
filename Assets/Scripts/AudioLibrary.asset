@@ -20,4 +20,16 @@ MonoBehaviour:
   - name: Golpe
     clip: {fileID: 8300000, guid: e1cdcc64dc16fdc40b6ee5ccf96b0932, type: 3}
   - name: Grito2
-    clip: {fileID: 8300000, guid: ec5f619104b36324ab09b9426f22537a, type: 3}
+    clip: {fileID: 8300000, guid: 896e77eb5cede1e488f9d05e00c8c9e6, type: 3}
+  - name: Baile
+    clip: {fileID: 8300000, guid: 639a16511e8b9684894335e7a2e3c8ba, type: 3}
+  - name: Cantar
+    clip: {fileID: 8300000, guid: 51f4f986725229a449c31ebcd332dea7, type: 3}
+  - name: Correr
+    clip: {fileID: 8300000, guid: da50689e053ba9e4095313b6c1ba90f7, type: 3}
+  - name: Hablar
+    clip: {fileID: 8300000, guid: 1aa1955fbac869840b42f26659bf3f0c, type: 3}
+  - name: Perseguir
+    clip: {fileID: 8300000, guid: 8b9ef8bac60f44f4ca1af6105445c30e, type: 3}
+  - name: Robar
+    clip: {fileID: 8300000, guid: 23cd3f0100135884ab4356678f50e47a, type: 3}

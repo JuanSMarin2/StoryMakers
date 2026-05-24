@@ -14,7 +14,6 @@ public class WordSlot : MonoBehaviour, IDropHandler
     private PhraseManager phraseManager;
     private LayoutElement layoutElement;
     private RectTransform rectTransform;
-    private float defaultPreferredWidth;
 
     private void Awake()
     {
@@ -25,11 +24,6 @@ public class WordSlot : MonoBehaviour, IDropHandler
         {
             layoutElement = gameObject.AddComponent<LayoutElement>();
         }
-
-        float currentWidth = rectTransform != null ? rectTransform.rect.width : minSlotWidth;
-        float layoutWidth = layoutElement.preferredWidth > 0f ? layoutElement.preferredWidth : currentWidth;
-        defaultPreferredWidth = Mathf.Max(minSlotWidth, layoutWidth);
-        layoutElement.preferredWidth = defaultPreferredWidth;
     }
 
     public void Initialize(WordType requiredType, PhraseManager manager, Color slotColor)
@@ -42,7 +36,20 @@ public class WordSlot : MonoBehaviour, IDropHandler
             slotImage.color = slotColor;
         }
 
-        SetWidth(defaultPreferredWidth);
+    }
+
+    public float GetVisualWidth()
+    {
+        if (slotImage != null)
+        {
+            RectTransform imageRect = slotImage.transform as RectTransform;
+            if (imageRect != null && imageRect.rect.width > 0f)
+            {
+                return imageRect.rect.width;
+            }
+        }
+
+        return rectTransform != null ? rectTransform.rect.width : 0f;
     }
 
     public void OnDrop(PointerEventData eventData)
@@ -73,7 +80,6 @@ public class WordSlot : MonoBehaviour, IDropHandler
         }
 
         CurrentWord = incomingWord;
-        UpdateWidthForWord(incomingWord);
         incomingWord.SnapIntoSlot(this);
         phraseManager.NotifySlotStateChanged();
     }
@@ -86,36 +92,9 @@ public class WordSlot : MonoBehaviour, IDropHandler
         }
 
         CurrentWord = null;
-        SetWidth(defaultPreferredWidth);
-
         if (notify)
         {
             phraseManager.NotifySlotStateChanged();
-        }
-    }
-
-    private void UpdateWidthForWord(KeyWord word)
-    {
-        if (word == null)
-        {
-            SetWidth(defaultPreferredWidth);
-            return;
-        }
-
-        float target = Mathf.Max(defaultPreferredWidth, word.GetPreferredWidth() + extraWidthWhenFilled);
-        SetWidth(target);
-    }
-
-    private void SetWidth(float width)
-    {
-        if (layoutElement != null)
-        {
-            layoutElement.preferredWidth = width;
-        }
-
-        if (rectTransform != null)
-        {
-            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
         }
     }
 

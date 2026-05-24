@@ -45,8 +45,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   words: []
-  wordsContainer: {fileID: 0}
+  sujetoContainer: {fileID: 0}
+  accionContainer: {fileID: 0}
+  lugarContainer: {fileID: 0}
+  fallbackContainer: {fileID: 0}
   keyWordPrefab: {fileID: 0}
+  wordsPerRow: 5
+  wordSpacing: {x: 10, y: 15}
   sujetoColor: {r: 0.95, g: 0.72, b: 0.4, a: 1}
   lugarColor: {r: 0.47, g: 0.78, b: 0.87, a: 1}
   accionColor: {r: 0.64, g: 0.87, b: 0.53, a: 1}
+  pronombreColor: {r: 0.63, g: 0.46, b: 0.95, a: 1}

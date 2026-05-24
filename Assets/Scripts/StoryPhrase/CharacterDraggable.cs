@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 [DisallowMultipleComponent]
@@ -76,7 +77,7 @@ public class CharacterDraggable : MonoBehaviour
         {
             HandleTouchDrag();
 
-            if (isDragging)
+            if (isDragging || IsAnyTouchActive())
             {
                 return;
             }
@@ -119,6 +120,16 @@ public class CharacterDraggable : MonoBehaviour
             return;
         }
 
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            if (mouse.leftButton.wasReleasedThisFrame && activeFingerId == -1)
+            {
+                EndDrag();
+            }
+
+            return;
+        }
+
         if (mouse.leftButton.wasPressedThisFrame)
         {
             TryBeginDrag(mouse.position.ReadValue(), -1);
@@ -144,6 +155,7 @@ public class CharacterDraggable : MonoBehaviour
         }
 
         var touches = touchscreen.touches;
+        bool activeFingerFound = false;
         for (int i = 0; i < touches.Count; i++)
         {
             var touch = touches[i];
@@ -154,12 +166,17 @@ public class CharacterDraggable : MonoBehaviour
 
             int fingerId = touch.touchId.ReadValue();
             Vector2 touchPosition = touch.position.ReadValue();
+            bool isOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(fingerId);
 
             if (!isDragging)
             {
-                if (touch.press.wasPressedThisFrame)
+                if (touch.press.isPressed && !isOverUi)
                 {
                     TryBeginDrag(touchPosition, fingerId);
+                    if (isDragging)
+                    {
+                        return;
+                    }
                 }
 
                 continue;
@@ -170,7 +187,9 @@ public class CharacterDraggable : MonoBehaviour
                 continue;
             }
 
-            if (touch.press.isPressed)
+            activeFingerFound = true;
+
+            if (touch.press.isPressed && !isOverUi)
             {
                 DragToScreenPosition(touchPosition);
             }
@@ -182,6 +201,31 @@ public class CharacterDraggable : MonoBehaviour
 
             return;
         }
+
+        if (isDragging && !activeFingerFound)
+        {
+            EndDrag();
+        }
+    }
+
+    private bool IsAnyTouchActive()
+    {
+        Touchscreen touchscreen = Touchscreen.current;
+        if (touchscreen == null)
+        {
+            return false;
+        }
+
+        var touches = touchscreen.touches;
+        for (int i = 0; i < touches.Count; i++)
+        {
+            if (touches[i].press.isPressed)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void TryBeginDrag(Vector2 screenPosition, int fingerId)
