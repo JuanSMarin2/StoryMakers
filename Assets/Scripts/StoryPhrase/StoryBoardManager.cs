@@ -826,7 +826,7 @@ public class StoryBoardManager : MonoBehaviour
         Animator animator = animationManager != null ? animationManager.GetAnimatorAt(sceneIndex, character1) : null;
         if (animator != null)
         {
-            animator.SetTrigger("Default");
+            animator.SetTrigger("Neutro");
         }
 
         target.position = finalPosition + offsetDirection * resultsSpawnOffset;
