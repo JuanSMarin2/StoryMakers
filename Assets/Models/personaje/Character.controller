@@ -759,7 +759,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 722e75ccc38bfb84a8eaebf155a7b3fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  audioLibrary: {fileID: 0}
+  audioLibrary: {fileID: 11400000, guid: 59a855bea0f4f63438d8e64350751318, type: 2}
   soundName: Robar
   playOnEnter: 1
   audibleDuration: 3
@@ -1731,7 +1731,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 722e75ccc38bfb84a8eaebf155a7b3fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  audioLibrary: {fileID: 0}
+  audioLibrary: {fileID: 11400000, guid: 59a855bea0f4f63438d8e64350751318, type: 2}
   soundName: Correr
   playOnEnter: 1
   audibleDuration: 3
