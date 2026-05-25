@@ -277,6 +277,33 @@ public class StoryBoardManager : MonoBehaviour
 
         UpdateFollowList(character1Follow, character1ZHoldTracker);
         UpdateFollowList(character2Follow, character2ZHoldTracker);
+        UpdateContinueButtonInteractivity();
+    }
+
+    private void UpdateContinueButtonInteractivity()
+    {
+        if (continueButton == null)
+        {
+            return;
+        }
+
+        continueButton.interactable = !IsAnyCharacterDragging();
+    }
+
+    private static bool IsAnyCharacterDragging()
+    {
+        CharacterDraggable[] draggables = FindObjectsOfType<CharacterDraggable>(true);
+
+        for (int i = 0; i < draggables.Length; i++)
+        {
+            CharacterDraggable draggable = draggables[i];
+            if (draggable != null && draggable.IsDragging)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void HookScrollbarHoldTrackers()

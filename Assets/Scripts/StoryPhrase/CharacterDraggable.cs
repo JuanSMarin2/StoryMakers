@@ -49,6 +49,11 @@ public class CharacterDraggable : MonoBehaviour
         get { return characterIndex; }
     }
 
+    public bool IsDragging
+    {
+        get { return isDragging; }
+    }
+
     public void SetDragIndex(int newCopyIndex, int newCharacterIndex)
     {
         copyIndex = Mathf.Max(0, newCopyIndex);

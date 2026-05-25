@@ -207,6 +207,55 @@ public class PhraseManager : MonoBehaviour
         isCompleted = allFilled;
     }
 
+    public bool TryPlaceWordInFirstCompatibleSlot(KeyWord word)
+    {
+        if (word == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            WordSlot slot = slots[i];
+            if (slot == null)
+            {
+                continue;
+            }
+
+            if (slot.RequiredType != word.Type && !IsActionTypePair(slot.RequiredType, word.Type))
+            {
+                continue;
+            }
+
+            if (slot.CurrentWord == null)
+            {
+                if (slot.TryPlaceWord(word))
+                {
+                    return true;
+                }
+            }
+            else if (slot.TryReplaceWord(word))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsActionTypePair(WordType requiredType, WordType incomingType)
+    {
+        bool incomingIsAction = incomingType == WordType.Accion
+            || incomingType == WordType.AccionP1
+            || incomingType == WordType.AccionP2;
+
+        bool requiredIsAction = requiredType == WordType.Accion
+            || requiredType == WordType.AccionP1
+            || requiredType == WordType.AccionP2;
+
+        return incomingIsAction && requiredIsAction;
+    }
+
     public string BuildFinalPhrase()
     {
         if (parsedSegments == null || parsedSegments.Length == 0)

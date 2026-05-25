@@ -85,6 +85,71 @@ public class WordSlot : MonoBehaviour, IDropHandler
         phraseManager.NotifySlotStateChanged();
     }
 
+    public bool TryPlaceWord(KeyWord incomingWord)
+    {
+        if (incomingWord == null)
+        {
+            return false;
+        }
+
+        if (!IsTypeCompatible(incomingWord.Type, RequiredType))
+        {
+            return false;
+        }
+
+        if (CurrentWord != null && CurrentWord != incomingWord)
+        {
+            return false;
+        }
+
+        CurrentWord = incomingWord;
+        incomingWord.SnapIntoSlot(this);
+        AudioManager.Instance?.PlayClickSound();
+
+        if (phraseManager != null)
+        {
+            phraseManager.NotifySlotStateChanged();
+        }
+
+        return true;
+    }
+
+    public bool TryReplaceWord(KeyWord incomingWord)
+    {
+        if (incomingWord == null)
+        {
+            return false;
+        }
+
+        if (!IsTypeCompatible(incomingWord.Type, RequiredType))
+        {
+            return false;
+        }
+
+        if (CurrentWord == incomingWord)
+        {
+            return true;
+        }
+
+        if (CurrentWord != null)
+        {
+            KeyWord displaced = CurrentWord;
+            CurrentWord = null;
+            displaced.CancelPlacementAndReturn();
+        }
+
+        CurrentWord = incomingWord;
+        incomingWord.SnapIntoSlot(this);
+        AudioManager.Instance?.PlayClickSound();
+
+        if (phraseManager != null)
+        {
+            phraseManager.NotifySlotStateChanged();
+        }
+
+        return true;
+    }
+
     public void RemoveWord(KeyWord word, bool notify)
     {
         if (CurrentWord != word)

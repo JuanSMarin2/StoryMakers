@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 [RequireComponent(typeof(RectTransform))]
 [RequireComponent(typeof(CanvasGroup))]
-public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class KeyWord : MonoBehaviour, IPointerDownHandler, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [Header("UI")]
     [SerializeField] private TMP_Text label;
@@ -20,6 +20,7 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
     [SerializeField] private float returnDuration = 0.35f;
     [SerializeField] private float snapDuration = 0.14f;
     [SerializeField] private float returnArcHeight = 80f;
+    [SerializeField] private float doubleClickThreshold = 0.35f;
 
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
@@ -33,6 +34,8 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
     private Coroutine snapCoroutine;
     private bool droppedIntoValidSlot;
     private bool isDragging;
+    private float lastPointerClickTime = -Mathf.Infinity;
+    private int lastPointerClickId = int.MinValue;
 
     public string WordText { get; private set; }
     public WordType Type { get; private set; }
@@ -82,6 +85,45 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
         StopMoveAnimations();
         isDragging = false;
         droppedIntoValidSlot = false;
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData == null)
+        {
+            return;
+        }
+
+        bool isDoubleClick = eventData.clickCount >= 2;
+        if (!isDoubleClick)
+        {
+            float timeSinceLastClick = Time.unscaledTime - lastPointerClickTime;
+            isDoubleClick = eventData.pointerId == lastPointerClickId && timeSinceLastClick <= Mathf.Max(0.05f, doubleClickThreshold);
+        }
+
+        lastPointerClickTime = Time.unscaledTime;
+        lastPointerClickId = eventData.pointerId;
+
+        if (!isDoubleClick)
+        {
+            return;
+        }
+
+        if (CurrentSlot != null)
+        {
+            WordSlot occupiedSlot = CurrentSlot;
+            occupiedSlot.RemoveWord(this, true);
+            ReturnToOriginSmooth();
+            return;
+        }
+
+        PhraseManager phraseManager = GetPhraseManager();
+        if (phraseManager == null)
+        {
+            return;
+        }
+
+        phraseManager.TryPlaceWordInFirstCompatibleSlot(this);
     }
 
     public void OnBeginDrag(PointerEventData eventData)
@@ -303,5 +345,22 @@ public class KeyWord : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, ID
         return oneMinusT * oneMinusT * start
             + 2f * oneMinusT * t * control
             + t * t * end;
+    }
+
+    private PhraseManager GetPhraseManager()
+    {
+        return FindObjectOfType<PhraseManager>(true);
+    }
+
+    public void CancelPlacementAndReturn()
+    {
+        if (CurrentSlot != null)
+        {
+            WordSlot occupiedSlot = CurrentSlot;
+            CurrentSlot = null;
+            occupiedSlot.RemoveWord(this, true);
+        }
+
+        ReturnToOriginSmooth();
     }
 }
