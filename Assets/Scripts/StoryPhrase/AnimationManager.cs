@@ -13,7 +13,7 @@ public class AnimationManager : MonoBehaviour
 
     [Header("Results Storage")]
     [SerializeField] private int totalScenes = 6;
-    [SerializeField] private string defaultTriggerName = "Default";
+    [SerializeField] private string defaultTriggerName = "Neutral";
     private readonly List<string> lastTriggerCharacter1 = new List<string>();
     private readonly List<string> lastTriggerCharacter2 = new List<string>();
 

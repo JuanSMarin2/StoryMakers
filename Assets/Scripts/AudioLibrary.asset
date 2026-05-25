@@ -22,14 +22,22 @@ MonoBehaviour:
   - name: Grito2
     clip: {fileID: 8300000, guid: 896e77eb5cede1e488f9d05e00c8c9e6, type: 3}
   - name: Baile
-    clip: {fileID: 8300000, guid: 639a16511e8b9684894335e7a2e3c8ba, type: 3}
+    clip: {fileID: 8300000, guid: 6e82cf3129b185c4bab2015a28e73d88, type: 3}
   - name: Cantar
-    clip: {fileID: 8300000, guid: 51f4f986725229a449c31ebcd332dea7, type: 3}
+    clip: {fileID: 8300000, guid: 856a15abad0f3c74bbd76588c0f90ee0, type: 3}
   - name: Correr
-    clip: {fileID: 8300000, guid: da50689e053ba9e4095313b6c1ba90f7, type: 3}
+    clip: {fileID: 8300000, guid: c24fd1c675d8c7b45a62ebab22459101, type: 3}
   - name: Hablar
-    clip: {fileID: 8300000, guid: 1aa1955fbac869840b42f26659bf3f0c, type: 3}
+    clip: {fileID: 8300000, guid: c78713ea9237ae340a36e876e92e7a12, type: 3}
   - name: Perseguir
-    clip: {fileID: 8300000, guid: 8b9ef8bac60f44f4ca1af6105445c30e, type: 3}
+    clip: {fileID: 8300000, guid: 692daf08c22024b4c8b628dd0bc72552, type: 3}
   - name: Robar
-    clip: {fileID: 8300000, guid: 23cd3f0100135884ab4356678f50e47a, type: 3}
+    clip: {fileID: 8300000, guid: 561e2256b094fbc47b7b112a0389da8b, type: 3}
+  - name: Enojo
+    clip: {fileID: 8300000, guid: 3828cb2c4a4e80d469e01c5808b1722f, type: 3}
+  - name: Triste
+    clip: {fileID: 8300000, guid: 54cd75223643d91448ed6cd5b9b14998, type: 3}
+  - name: Caminar
+    clip: {fileID: 8300000, guid: 561fe15622ca67a48a3d343558880345, type: 3}
+  - name: Nervioso
+    clip: {fileID: 8300000, guid: 296b21ade011da740a7a94177a36b150, type: 3}

@@ -81,6 +81,7 @@ public class WordSlot : MonoBehaviour, IDropHandler
 
         CurrentWord = incomingWord;
         incomingWord.SnapIntoSlot(this);
+        AudioManager.Instance?.PlayClickSound();
         phraseManager.NotifySlotStateChanged();
     }
 

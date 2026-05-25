@@ -273,7 +273,7 @@ public class SceneryManager : MonoBehaviour
     {
         string scene1 = GetPlaceFromPhraseManagerOrFallback(1);
         string scene2 = GetPlaceFromPhraseManagerOrFallback(2);
-        return string.Format("Escenario 1: {0} | Escenario 2: {1}", scene1, scene2);
+        return string.Format("{0} | {1}", scene1, scene2);
     }
 
     private int GetCurrentSceneNumber()

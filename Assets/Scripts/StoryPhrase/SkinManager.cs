@@ -540,11 +540,11 @@ public class SkinManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(normalizedTipo)
             || string.Equals(normalizedTipo, normalizedPersonaje, StringComparison.OrdinalIgnoreCase))
         {
-            SetCharacterText(string.Format("Personaje {0}: {1}", displayIndex, normalizedPersonaje));
+            SetCharacterText(string.Format("{1}", displayIndex, normalizedPersonaje));
             return;
         }
 
-        SetCharacterText(string.Format("Personaje {0}: {1} {2}", displayIndex, normalizedTipo, normalizedPersonaje));
+        SetCharacterText(string.Format("{1} {2}", displayIndex, normalizedTipo, normalizedPersonaje));
     }
 
     private static string CapitalizeFirst(string text)

@@ -855,13 +855,13 @@ public class StoryBoardManager : MonoBehaviour
             Animator anim1 = animationManager.GetAnimatorAt(i, true);
             if (anim1 != null)
             {
-                anim1.SetTrigger("Default");
+                anim1.SetTrigger("Neutral");
             }
 
             Animator anim2 = animationManager.GetAnimatorAt(i, false);
             if (anim2 != null)
             {
-                anim2.SetTrigger("Default");
+                anim2.SetTrigger("Neutral");
             }
         }
     }
