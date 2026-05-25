@@ -16611,7 +16611,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Etapa 1: Guion'
+  m_text: "Etapa 1: Gui\xF3n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 20b18579717868744a2a888a3b059af7, type: 2}
   m_sharedMaterial: {fileID: 3084078023577525153, guid: 20b18579717868744a2a888a3b059af7, type: 2}
@@ -19545,7 +19545,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1042754214
 Transform:
   m_ObjectHideFlags: 0
